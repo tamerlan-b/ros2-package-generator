@@ -1,0 +1,39 @@
+#pragma once
+
+#include "rclcpp/rclcpp.hpp"
+{% if tf_listener %}
+#include "tf2_ros/buffer_interface.h"
+#include "tf2_ros/transform_listener.h"
+{% endif %}
+{% for include in includes %}
+#include "{{ include }}"
+{% endfor %}
+
+{% if node_ns %}
+namespace {{ node_ns }}
+{
+{% endif %}
+
+class {{ node_classname }} : public rclcpp::Node
+{
+public:
+    {{ node_classname }}({% if is_component %}const rclcpp::NodeOptions & options{% endif %});
+    
+private:
+    {% if tf_listener %}
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf_listener_;
+    {% endif %}
+    {% for pub in publishers %}
+    rclcpp::Publisher<{{ pub.msg_type }}>::SharedPtr {{ pub.var_name }};
+    {% endfor %}
+    {% set suffixes = {'obj': '', 'uptr': '::UniquePtr', 'sptr': '::SharedPtr', 'csptr': '::ConstSharedPtr'} %}
+    {% for sub in subscribers %}
+    rclcpp::Subscription<{{ sub.msg_type }}>::SharedPtr {{ sub.var_name }};
+    void {{ sub.callback }}(const {{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg);
+    {% endfor %}
+};
+
+{% if node_ns %}
+} // namespace {{ node_ns }}
+{% endif %}

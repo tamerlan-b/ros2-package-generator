@@ -1,0 +1,67 @@
+cmake_minimum_required(VERSION 3.5)
+project({{ package_name }})
+
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+
+set(DEPENDENCIES
+  rclcpp
+  {% if is_component %}
+  rclcpp_components
+  {% endif %}
+  {% if tf_listener %}
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
+  {% endif %}
+  {% for pkg in include_pkgs %}
+  {{ pkg }}
+  {% endfor %}
+)
+
+foreach(DEP IN LISTS DEPENDENCIES)
+  find_package(${DEP} REQUIRED)
+endforeach()
+
+include_directories(
+  include
+)
+
+{% if is_component %}
+# Component
+add_library({{ cmake_target_name }} SHARED 
+  src/{{ node_filename }}.cpp
+)
+ament_target_dependencies({{ cmake_target_name }} ${DEPENDENCIES})
+rclcpp_components_register_node({{ cmake_target_name }} PLUGIN "{{ node_ns + '::' if node_ns }}{{ node_classname }}" EXECUTABLE {{ cmake_target_name }}_node)
+{% else %}
+add_executable({{ cmake_target_name }} src/{{ node_filename }}.cpp)
+ament_target_dependencies({{ cmake_target_name }} ${DEPENDENCIES})
+{% endif %}
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+# Install components
+install(TARGETS
+  {{ cmake_target_name }}
+  DESTINATION lib
+)
+
+ament_package()

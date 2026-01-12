@@ -1,0 +1,84 @@
+#include "{{ package_name }}/{{ node_filename }}.hpp"
+{% if node_ns %}
+namespace {{ node_ns }}
+{
+{% endif %}
+{% set suffixes = {'obj': '', 'uptr': '::UniquePtr', 'sptr': '::SharedPtr', 'csptr': '::ConstSharedPtr'} %}
+
+{{ node_classname }}::{{ node_classname }}({% if is_component %}const rclcpp::NodeOptions & options{% endif %}): Node("{{ node_name }}"{% if is_component %}, options{% endif %})
+{% if tf_listener %}
+, tf_buffer_(this->get_clock()),
+  tf_listener_(tf_buffer_)
+{% endif %}
+{
+    {% if publishers %}
+    // Publishers
+    {% endif %}
+    {% for pub in publishers %}
+      {% if pub.qos.is_default %}
+        {% set qos_expr = '{' ~ pub.qos.queue_size ~ '}' %}
+      {% else %}
+    rclcpp::QoS {{ pub.var_name }}_qos({{ pub.qos.queue_size }});
+        {% if pub.qos.is_keep_all %}
+    {{ pub.var_name }}_qos.keep_all();
+        {% endif %}
+        {% if pub.qos.is_best_effort %}
+    {{ pub.var_name }}_qos.best_effort();
+        {% endif %}
+        {% if pub.qos.is_transient_local %}
+    {{ pub.var_name }}_qos.transient_local();
+        {% endif %}
+        {% set qos_expr = pub.var_name ~ '_qos' %}
+      {% endif %}
+    this->{{ pub.var_name }} = this->create_publisher<{{ pub.msg_type }}>("{{ pub.topic }}", {{ qos_expr }});
+    {% endfor %}
+    
+    {% if subscribers %}
+    // Subscribers
+    {% endif %}
+    {% for sub in subscribers %}
+      {% if sub.qos.is_default %}
+        {% set qos_expr = '{' ~ sub.qos.queue_size ~ '}' %}
+      {% else %}
+      rclcpp::QoS {{ sub.var_name }}_qos({{ sub.qos.queue_size }});
+        {% if sub.qos.is_keep_all %}
+      {{ sub.var_name }}_qos.keep_all();
+        {% endif %}
+        {% if sub.qos.is_best_effort %}
+      {{ sub.var_name }}_qos.best_effort();
+        {% endif %}
+        {% if sub.qos.is_transient_local %}
+      {{ sub.var_name }}_qos.transient_local();
+        {% endif %}
+        {% set qos_expr = sub.var_name ~ '_qos' %}
+      {% endif %}
+      this->{{ sub.var_name }} = this->create_subscription<{{ sub.msg_type }}>(
+          "{{ sub.topic }}", {{ qos_expr }},
+        [&]({{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg) { this->{{ sub.callback }}(std::move(msg)); });
+    {% endfor %}
+}
+
+{% for sub in subscribers %}
+void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg)
+{
+    // TODO: add implementation
+}
+{% endfor %}
+
+{% if node_ns %}
+} // namespace {{ node_ns }}
+{% endif %}
+
+{% if is_component %}
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE({{ node_ns + '::' if node_ns }}{{ node_classname }})
+{% else %}
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<{{ node_ns + '::' if node_ns }}{{ node_classname }}>();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
+}
+{% endif %}
