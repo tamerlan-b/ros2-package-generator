@@ -2,6 +2,33 @@
 
 Tool for quickly creating ROS2 Foxy packages with nodes
 
+![screenshot](docs/screenshot.png)
+
+### Install
+
+Clone repo:
+```bash
+git clone https://github.com/tamerlan-b/ros2-node-generator.git
+```
+
+Create virtual environment:
+```bash
+python3 -m venv ros2-env
+source ros2-env/bin/activate
+```
+
+Install deps:
+```bash
+cd ros2-node-generator
+pip install -r requirements.txt
+```
+
+### Launch
+
+```bash
+streamlit run ros2_node_generator.py
+```
+
 ### TODO
 - [ ] Update README
 - [ ] Add the ability to edit publishers and subscribers
