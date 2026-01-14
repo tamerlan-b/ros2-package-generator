@@ -193,16 +193,16 @@ def add_publisher():
 def remove_node_elements():
     # Generate checkboxes
     checkboxes = {'sub': [], 'pub': []}
-    if len(st.session_state["node_info"]["publishers"]) > 0:
-        st.text("Publishers:")
-    for pub in st.session_state["node_info"]["publishers"]:
-        checkboxes['pub'].append(st.checkbox(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)'))
-    
     if len(st.session_state["node_info"]["subscribers"]) > 0:
         st.text("Subscribers:")
     for sub in st.session_state["node_info"]["subscribers"]:
         checkboxes['sub'].append(st.checkbox(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)'))
     
+    if len(st.session_state["node_info"]["publishers"]) > 0:
+        st.text("Publishers:")
+    for pub in st.session_state["node_info"]["publishers"]:
+        checkboxes['pub'].append(st.checkbox(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)'))
+
     # Remove selected items
     if st.button("Remove selected items"):
         st.session_state["node_info"]["publishers"] = [p for i, p in enumerate(st.session_state["node_info"]["publishers"], 0) if checkboxes['pub'][i] == False]
@@ -294,13 +294,13 @@ def draw_node():
 
 # Visualize node's structure
 with st.expander("Node structure"):
-    node_struct_str = 'Publishers:'
-    for pub in st.session_state["node_info"]["publishers"]:
-        node_struct_str += f'\n- `{pub["var_name"]}` (`{pub["msg_type"]}`)'
-    
-    node_struct_str += '\n\nSubscribers:'
+    node_struct_str = 'Subscribers:'
     for sub in st.session_state["node_info"]["subscribers"]:
         node_struct_str += f'\n- `{sub["var_name"]}` (`{sub["msg_type"]}`)'
+    
+    node_struct_str += '\n\nPublishers:'
+    for pub in st.session_state["node_info"]["publishers"]:
+        node_struct_str += f'\n- `{pub["var_name"]}` (`{pub["msg_type"]}`)'
     st.markdown(node_struct_str)
     
     # Visualize node's graph
