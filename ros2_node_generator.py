@@ -306,6 +306,10 @@ with st.expander("Node structure"):
     # Visualize node's graph
     st.graphviz_chart(draw_node())
 
+# Write terminal command for package generation
+with st.expander("ROS2 pkg create command:", expanded=True):
+    st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["node_info"]["package_name"]}', language="bash")
+
 # Generate package's files
 files = generate_files()
 tabs = st.tabs(files.keys())
