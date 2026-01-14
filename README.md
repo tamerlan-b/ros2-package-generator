@@ -1,6 +1,6 @@
-# ROS2 Node Generator
+# ROS2 Package Generator
 
-Tool for quickly creating ROS2 Foxy packages with nodes
+Tool for quickly creating ROS2 Foxy packages with C++ node
 
 ![screenshot](docs/screenshot.png)
 
@@ -8,7 +8,7 @@ Tool for quickly creating ROS2 Foxy packages with nodes
 
 Clone repo:
 ```bash
-git clone https://github.com/tamerlan-b/ros2-node-generator.git
+git clone https://github.com/tamerlan-b/ros2-package-generator.git
 ```
 
 Create virtual environment:
@@ -19,14 +19,14 @@ source ros2-env/bin/activate
 
 Install deps:
 ```bash
-cd ros2-node-generator
+cd ros2-package-generator
 pip install -r requirements.txt
 ```
 
 ### Launch
 
 ```bash
-streamlit run ros2_node_generator.py
+streamlit run ros2_package_generator.py
 ```
 
 ### TODO
