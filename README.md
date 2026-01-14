@@ -30,8 +30,8 @@ streamlit run ros2_node_generator.py
 ```
 
 ### TODO
+- [x] Add the ability to edit publishers and subscribers
 - [ ] Update README
-- [ ] Add the ability to edit publishers and subscribers
 - [ ] Add support for:
   - [ ] ros2-params
   - [ ] ros2-timers

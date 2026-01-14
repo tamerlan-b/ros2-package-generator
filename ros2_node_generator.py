@@ -107,19 +107,30 @@ def add_msg_include(msg_type: str):
     st.session_state["node_info"]["includes"].add(msg_include)
     st.session_state["node_info"]["include_pkgs"].add(msg_pkg)
 
-def add_qos():
+def refresh_includes():
+    st.session_state["node_info"]['include_pkgs'] = set()
+    st.session_state["node_info"]['includes'] = set()       
+    for p in st.session_state["node_info"]["publishers"]:
+        add_msg_include(p["msg_type"])
+    for s in st.session_state["node_info"]["subscribers"]:
+        add_msg_include(s["msg_type"])
+
+def add_qos(prior_qos = {}):
     default_qos = {"history": "Keep last", "queue_size": None, "reliability": "Reliable", "durability": "Volatile"}
     qos = {}
-    st.text("QoS will be here")
-    qos["history"] = st.radio("History", ["Keep last", "Keep all"], horizontal=True)
+    history_opts = ["Keep last", "Keep all"]
+    qos["history"] = st.radio("History", history_opts, index= 0 if prior_qos == {} or "history" not in prior_qos.keys() else [i for i, h in enumerate(history_opts) if h == prior_qos["history"]][0], horizontal=True)
     qos["is_keep_all"] = qos["history"] == "Keep all"
     qos["queue_size"] = 1
     if not qos["is_keep_all"]:
-        qos["queue_size"] = st.number_input("Queue size", min_value=1, step=1)
-    qos["reliability"] = st.radio("Reliability", ["Reliable", "Best effort"], horizontal=True)
+        qos["queue_size"] = st.number_input("Queue size", min_value=1, value= 1 if prior_qos == {} or "queue_size" not in prior_qos.keys() else prior_qos["queue_size"], step=1)
+    
+    reliability_opts = ["Reliable", "Best effort"]
+    qos["reliability"] = st.radio("Reliability", reliability_opts, index= 0 if prior_qos == {} or "reliability" not in prior_qos.keys() else [i for i, r in enumerate(reliability_opts) if r == prior_qos["reliability"]][0], horizontal=True)
     qos["is_best_effort"] = qos["reliability"] == "Best effort"
     
-    qos["durability"] = st.radio("Durability", ["Volatile", "Transient local"], horizontal=True)
+    durability_opts = ["Volatile", "Transient local"]
+    qos["durability"] = st.radio("Durability", durability_opts, index= 0 if prior_qos == {} or "durability" not in prior_qos.keys() else [i for i, d in enumerate(durability_opts) if d == prior_qos["durability"]][0], horizontal=True)
     qos["is_transient_local"] = qos["durability"] == "Transient local"
     
     def is_default_qos(custom_qos: dict, qos_default: dict):
@@ -131,19 +142,19 @@ def add_qos():
     qos["is_default"] = is_default_qos(qos, default_qos)
     return qos
 
-def get_pub_sub_info():
+def get_pub_sub_info(prior_info={}):
     info = {}
     tags = st_tags(
         label='Message type',
         text='Press Enter to add',
-        value=[],
+        value=[] if prior_info == {} or 'msg_type' not in prior_info.keys() else [prior_info["msg_type"]],
         suggestions=st.session_state["msg_autocomplete"],
         maxtags=1,
         key="msgs_tags"
     )
     info["msg_type"] = None if len(tags) == 0 else tags[0]
     # TODO: check if variable's name is free
-    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub")
+    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value= "" if prior_info == {} or 'var_name' not in prior_info.keys() else prior_info["var_name"])
     name_free = True
     for p in st.session_state["node_info"]["publishers"]:
         if p["var_name"] == info["var_name"]:
@@ -154,10 +165,10 @@ def get_pub_sub_info():
             if s["var_name"] == info["var_name"]:
                 name_free = False
                 break
-    if not name_free:
+    if not name_free and 'var_name' not in prior_info.keys():
         st.error(f'Name {info["var_name"]} is already used for another variable')
             
-    info["topic"] = st.text_input("Topic name", placeholder="/points")
+    info["topic"] = st.text_input("Topic name", placeholder="/points", value="" if prior_info == {} or 'topic' not in prior_info.keys() else prior_info["topic"])
     return info
 
 @st.dialog("Add Subscriber")
@@ -189,36 +200,41 @@ def add_publisher():
         add_msg_include(pub_info["msg_type"])
         st.rerun()
 
-@st.dialog("Remove node elements")
-def remove_node_elements():
-    # Generate checkboxes
-    checkboxes = {'sub': [], 'pub': []}
-    if len(st.session_state["node_info"]["subscribers"]) > 0:
-        st.text("Subscribers:")
-    for sub in st.session_state["node_info"]["subscribers"]:
-        checkboxes['sub'].append(st.checkbox(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)'))
-    
-    if len(st.session_state["node_info"]["publishers"]) > 0:
-        st.text("Publishers:")
-    for pub in st.session_state["node_info"]["publishers"]:
-        checkboxes['pub'].append(st.checkbox(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)'))
+@st.dialog("Edit Publisher")
+def edit_publisher(pub_var_name):
+    index = [i for i, p in enumerate(st.session_state["node_info"]['publishers']) if p["var_name"] == pub_var_name][0]
+    editing_pub = st.session_state["node_info"]['publishers'][index]
+    pub_info = get_pub_sub_info(editing_pub)
+    with st.expander('QoS settings'):
+        pub_info["qos"] = add_qos(editing_pub["qos"])
+    if st.button("Apply"):
+        st.session_state["node_info"]['publishers'][index] = pub_info
+        refresh_includes()
+        add_msg_include(pub_info["msg_type"])
+        st.rerun()
 
-    # Remove selected items
-    if st.button("Remove selected items"):
-        st.session_state["node_info"]["publishers"] = [p for i, p in enumerate(st.session_state["node_info"]["publishers"], 0) if checkboxes['pub'][i] == False]
-        st.session_state["node_info"]["subscribers"] = [s for i, s in enumerate(st.session_state["node_info"]["subscribers"], 0) if checkboxes['sub'][i] == False]
-        # TODO: Remove includes more safely
-        st.session_state["node_info"]['include_pkgs'] = set()
-        st.session_state["node_info"]['includes'] = set()
-        
-        for p in st.session_state["node_info"]["publishers"]:
-            add_msg_include(p["msg_type"])
-        for s in st.session_state["node_info"]["subscribers"]:
-            add_msg_include(s["msg_type"])
+@st.dialog("Edit Subscriber")
+def edit_subscriber(sub_var_name):
+    index = [i for i, p in enumerate(st.session_state["node_info"]['subscribers']) if p["var_name"] == sub_var_name][0]
+    editing_sub = st.session_state["node_info"]['subscribers'][index]
+    sub_info = get_pub_sub_info(editing_sub)
+    
+    sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback", value= "" if editing_sub == {} or 'callback' not in editing_sub.keys() else editing_sub["callback"])
+    cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
+    callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=2 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
+    sub_info["callback_arg_type"] = cb_types[callback_arg_type]
+    type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
+    st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
+    with st.expander('QoS settings'):
+        sub_info["qos"] = add_qos(editing_sub["qos"])
+    
+    if st.button("Apply"):
+        st.session_state["node_info"]['subscribers'][index] = sub_info
+        refresh_includes()
+        add_msg_include(sub_info["msg_type"])
         st.rerun()
 
 with st.sidebar:
-
     # TODO: Remove button later
     if st.button("Fill by default"):
         st.session_state["node_info"] = {
@@ -255,17 +271,6 @@ with st.sidebar:
     st.session_state["node_info"]["is_component"] = node_type == "component"
     st.session_state["node_info"]["tf_listener"] = st.checkbox("Add tf listener", False)
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("Add Subscriber"):
-            add_subscriber()
-    with col2:
-        if st.button("Add Publisher"):
-            add_publisher()
-    with col3:
-        if st.button("Remove node elements", type="primary"):
-            remove_node_elements()
-
 def draw_node():
     dot = Digraph(comment='ROS2 Node', format='svg')
     dot.attr(rankdir='LR')  # Left to right
@@ -292,19 +297,40 @@ def draw_node():
 
     return dot
 
-# Visualize node's structure
-with st.expander("Node structure"):
-    node_struct_str = 'Subscribers:'
-    for sub in st.session_state["node_info"]["subscribers"]:
-        node_struct_str += f'\n- `{sub["var_name"]}` (`{sub["msg_type"]}`)'
+with st.expander("Node structure", expanded=True):
+    def text_with_button(text, button_icon="➕", help=None, on_click=None, btn_key=None):
+        text_col, btn_col = st.columns([2, 1], vertical_alignment='center')
+        text_col.write(text)
+        return btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
     
-    node_struct_str += '\n\nPublishers:'
+    def checkboxes_with_button(text, button_icon="➕", help=None, on_click=None, btn_key=None):
+        cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
+        btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
+        return cb_col.checkbox(text)
+     
+    checkboxes = {'sub': [], 'pub': []}
+        
+    text_with_button("Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
+    for sub in st.session_state["node_info"]["subscribers"]:
+        var_name = sub["var_name"]
+        checkboxes['sub'].append(checkboxes_with_button(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=sub["var_name"], on_click=lambda var=var_name: edit_subscriber(var)))
+    
+    text_with_button("Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
     for pub in st.session_state["node_info"]["publishers"]:
-        node_struct_str += f'\n- `{pub["var_name"]}` (`{pub["msg_type"]}`)'
-    st.markdown(node_struct_str)
+        var_name = pub["var_name"]
+        checkboxes['pub'].append(checkboxes_with_button(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=pub["var_name"], on_click=lambda var=var_name: edit_publisher(var)))
+    
+    # Remove selected items
+    if st.button("Remove selected items 🗑️", type="primary"):
+        st.session_state["node_info"]["publishers"] = [p for i, p in enumerate(st.session_state["node_info"]["publishers"], 0) if checkboxes['pub'][i] == False]
+        st.session_state["node_info"]["subscribers"] = [s for i, s in enumerate(st.session_state["node_info"]["subscribers"], 0) if checkboxes['sub'][i] == False]
+        # TODO: Remove includes more safely
+        refresh_includes()
+        st.rerun()
     
     # Visualize node's graph
-    st.graphviz_chart(draw_node())
+    with st.expander("Graph", expanded=True):
+        st.graphviz_chart(draw_node())
 
 # Write terminal command for package generation
 with st.expander("ROS2 pkg create command:", expanded=True):
@@ -325,3 +351,6 @@ for fname, fcontent in files.items():
         else:
             st.code(fcontent)
     index += 1
+
+# For debug
+# st.write(st.session_state["node_info"])
