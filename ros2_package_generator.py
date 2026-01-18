@@ -12,6 +12,8 @@ from typing import Dict
 st.title("ROS2 Foxy Package Generator")
 
 if "msg_autocomplete" not in st.session_state:
+    st.session_state["param_types"] =  [
+        "bool", "int", "double", "std::string", "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
     st.session_state["msg_autocomplete"] = []
     with open("ros_messages.txt", 'r') as f:
         st.session_state["msg_autocomplete"] = f.readlines()
@@ -119,22 +121,28 @@ def refresh_includes():
     for s in st.session_state["node_info"]["subscribers"]:
         add_msg_include(s["msg_type"])
 
-def add_qos(prior_qos = {}):
+def get_index(value, iterable, default_index=-1):
+    for i, item in enumerate(iterable, 0):
+        if item == value:
+            return i
+    return default_index
+
+def add_qos(prior_qos: Dict = {}) -> Dict:
     default_qos = {"history": "Keep last", "queue_size": None, "reliability": "Reliable", "durability": "Volatile"}
     qos = {}
     history_opts = ["Keep last", "Keep all"]
-    qos["history"] = st.radio("History", history_opts, index= 0 if prior_qos == {} or "history" not in prior_qos.keys() else [i for i, h in enumerate(history_opts) if h == prior_qos["history"]][0], horizontal=True)
+    qos["history"] = st.radio("History", history_opts, index=0 if "history" not in prior_qos else get_index(prior_qos["history"], history_opts, 0), horizontal=True)
     qos["is_keep_all"] = qos["history"] == "Keep all"
     qos["queue_size"] = 1
     if not qos["is_keep_all"]:
-        qos["queue_size"] = st.number_input("Queue size", min_value=1, value= 1 if prior_qos == {} or "queue_size" not in prior_qos.keys() else prior_qos["queue_size"], step=1)
+        qos["queue_size"] = st.number_input("Queue size", min_value=1, value=prior_qos.get("queue_size", 1), step=1)
     
     reliability_opts = ["Reliable", "Best effort"]
-    qos["reliability"] = st.radio("Reliability", reliability_opts, index= 0 if prior_qos == {} or "reliability" not in prior_qos.keys() else [i for i, r in enumerate(reliability_opts) if r == prior_qos["reliability"]][0], horizontal=True)
+    qos["reliability"] = st.radio("Reliability", reliability_opts, index=0 if "reliability" not in prior_qos else get_index(prior_qos["reliability"], reliability_opts, 0), horizontal=True)
     qos["is_best_effort"] = qos["reliability"] == "Best effort"
     
     durability_opts = ["Volatile", "Transient local"]
-    qos["durability"] = st.radio("Durability", durability_opts, index= 0 if prior_qos == {} or "durability" not in prior_qos.keys() else [i for i, d in enumerate(durability_opts) if d == prior_qos["durability"]][0], horizontal=True)
+    qos["durability"] = st.radio("Durability", durability_opts, index=0 if "durability" not in prior_qos else get_index(prior_qos["durability"], durability_opts, 0), horizontal=True)
     qos["is_transient_local"] = qos["durability"] == "Transient local"
     
     def is_default_qos(custom_qos: dict, qos_default: dict):
@@ -146,33 +154,27 @@ def add_qos(prior_qos = {}):
     qos["is_default"] = is_default_qos(qos, default_qos)
     return qos
 
-def get_pub_sub_info(prior_info={}):
+def get_pub_sub_info(prior_info: Dict={}) -> Dict:
     info = {}
     tags = st_tags(
         label='Message type',
         text='Press Enter to add',
-        value=[] if prior_info == {} or 'msg_type' not in prior_info.keys() else [prior_info["msg_type"]],
+        value=[] if 'msg_type' not in prior_info else [prior_info["msg_type"]],
         suggestions=st.session_state["msg_autocomplete"],
         maxtags=1,
         key="msgs_tags"
     )
     info["msg_type"] = None if len(tags) == 0 else tags[0]
-    # TODO: check if variable's name is free
-    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value= "" if prior_info == {} or 'var_name' not in prior_info.keys() else prior_info["var_name"])
-    name_free = True
-    for p in st.session_state["node_info"]["publishers"]:
-        if p["var_name"] == info["var_name"]:
-            name_free = False
-            break
-    if name_free:
-        for s in st.session_state["node_info"]["subscribers"]:
-            if s["var_name"] == info["var_name"]:
-                name_free = False
-                break
-    if not name_free and 'var_name' not in prior_info.keys():
+    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value=prior_info.get("var_name", ""))
+    
+    # Сheck if variable's name is free
+    pub_name_busy = any(p["var_name"] == info["var_name"] for p in st.session_state["node_info"]["publishers"])
+    sub_name_busy = any(s["var_name"] == info["var_name"] for s in st.session_state["node_info"]["subscribers"])
+    name_busy = pub_name_busy or sub_name_busy   
+    if name_busy and 'var_name' not in prior_info:
         st.error(f'Name {info["var_name"]} is already used for another variable')
             
-    info["topic"] = st.text_input("Topic name", placeholder="/points", value="" if prior_info == {} or 'topic' not in prior_info.keys() else prior_info["topic"])
+    info["topic"] = st.text_input("Topic name", placeholder="/points", value=prior_info.get("topic", ""))
     return info
 
 @st.dialog("Add Subscriber")
@@ -212,12 +214,9 @@ def add_parameter():
     if name_busy:
         st.error(f'Name {param_info["name"]} is already used for another parameter')
         
-    param_types = ["bool", "int", "double", "std::string", 
-                    "std::vector<uint8_t>", "std::vector<bool>", 
-                    "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
-    param_info["type"] = st.selectbox("Type", param_types)
+    param_info["type"] = st.selectbox("Type", options=st.session_state["param_types"])
     
-    param_info["default"] = st.text_input("Default value", placeholder="Optional field")
+    param_info["default"] = st.text_input("Default value")
     if param_info["default"] == "":
         st.error("You should enter default value")
     
@@ -264,18 +263,15 @@ def edit_parameter(param_name):
     index = [i for i, p in enumerate(st.session_state["node_info"]['params']) if p["name"] == param_name][0]
     editing_param = st.session_state["node_info"]['params'][index]
     param_info = {}
-    param_info["name"] = st.text_input("Name", value="" if editing_param == {} or 'name' not in editing_param.keys() else editing_param["name"])
+    param_info["name"] = st.text_input("Name", value=editing_param.get("name", ""))
     name_busy = any(p["name"] == param_info["name"] for p in st.session_state["node_info"]["params"])
     if name_busy:
         if editing_param and editing_param['name'] != param_info["name"]:
             st.error(f'Name {param_info["name"]} is already used for another parameter')
-        
-    param_types = ["bool", "int", "double", "std::string", 
-                    "std::vector<uint8_t>", "std::vector<bool>", 
-                    "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
-    param_info["type"] = st.selectbox("Type", param_types, index=0 if editing_param == {} or 'type' not in editing_param.keys() else [i for i, pt in enumerate(param_types) if pt == editing_param["type"]][0])
+
+    param_info["type"] = st.selectbox("Type", st.session_state["param_types"], index=get_index(editing_param["type"], st.session_state["param_types"], 0))
     
-    param_info["default"] = st.text_input("Default value", placeholder="Optional field", value="" if editing_param == {} or 'default' not in editing_param.keys() else editing_param["default"])
+    param_info["default"] = st.text_input("Default value", value=editing_param.get("default", ""))
     if param_info["default"] == "":
         st.error("You should enter default value")
     
@@ -325,7 +321,7 @@ with st.sidebar:
     st.session_state["node_info"]["is_component"] = node_type == "component"
     st.session_state["node_info"]["tf_listener"] = st.checkbox("Add tf listener", False)
 
-def draw_node():
+def draw_node() -> Digraph:
     dot = Digraph(comment='ROS2 Node', format='svg')
     dot.attr(rankdir='LR')  # Left to right
 
@@ -352,12 +348,13 @@ def draw_node():
     return dot
 
 with st.expander("Node structure", expanded=True):
-    def text_with_button(text, button_icon="➕", help=None, on_click=None, btn_key=None):
+    
+    def text_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
         text_col, btn_col = st.columns([2, 1], vertical_alignment='center')
         text_col.write(text)
         return btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
     
-    def checkboxes_with_button(text, button_icon="➕", help=None, on_click=None, btn_key=None):
+    def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
         cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
@@ -439,8 +436,8 @@ def simple_download_button():
         mime="application/zip"
     )
 
+# Add "Download Package" button
 simple_download_button()
-
 
 # Write terminal command for package generation
 with st.expander("ROS2 pkg create command:", expanded=True):
