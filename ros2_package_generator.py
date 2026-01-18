@@ -5,6 +5,9 @@ import jinja2
 from streamlit_tags import st_tags
 from graphviz import Digraph
 import re
+import zipfile
+import io
+from typing import Dict
 
 st.title("ROS2 Foxy Package Generator")
 
@@ -389,12 +392,60 @@ with st.expander("Node structure", expanded=True):
     with st.expander("Graph", expanded=True):
         st.graphviz_chart(draw_node())
 
+# Generate package's files
+files = generate_files()
+
+def create_package_archive_structure(pkg_name: str, node_name: str, 
+                                    files_content: Dict[str, str]) -> io.BytesIO:
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # 1. Header file
+        hpp_path = f"{pkg_name}/include/{pkg_name}/{node_name}.hpp"
+        zf.writestr(hpp_path, files_content.get('hpp', ''))
+        
+        # 2. Source file
+        cpp_path = f"{pkg_name}/src/{node_name}.cpp"
+        zf.writestr(cpp_path, files_content.get('cpp', ''))
+        
+        # 3. CMakeLists.txt
+        cmake_path = f"{pkg_name}/CMakeLists.txt"
+        zf.writestr(cmake_path, files_content.get('cmake', ''))
+        
+        # 4. package.xml
+        package_xml_path = f"{pkg_name}/package.xml"
+        zf.writestr(package_xml_path, files_content.get('package_xml', ''))
+    
+    zip_buffer.seek(0)
+    return zip_buffer
+
+def simple_download_button():
+    zip_files = {
+        'hpp': [v for f, v in files.items() if ".hpp" in f][0],
+        'cpp': [v for f, v in files.items() if ".cpp" in f][0],
+        'cmake': [v for f, v in files.items() if "CMakeLists.txt" == f][0],
+        'package_xml': [v for f, v in files.items() if "package.xml" == f][0],
+    }
+    
+    zip_buffer = create_package_archive_structure(
+        st.session_state["node_info"]["package_name"], 
+        st.session_state["node_info"]["node_filename"], 
+        zip_files)
+    
+    st.download_button(
+        "📦 Download Package",
+        data=zip_buffer,
+        file_name=f'{st.session_state["node_info"]["package_name"]}.zip',
+        mime="application/zip"
+    )
+
+simple_download_button()
+
+
 # Write terminal command for package generation
 with st.expander("ROS2 pkg create command:", expanded=True):
     st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["node_info"]["package_name"]}', language="bash")
 
-# Generate package's files
-files = generate_files()
 tabs = st.tabs(files.keys())
 index = 0
 for fname, fcontent in files.items():

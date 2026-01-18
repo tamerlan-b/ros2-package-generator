@@ -39,7 +39,7 @@ streamlit run ros2_package_generator.py
   - [ ] ros2-actions
   - [ ] message_filters
 - [ ] Support newer ROS2 distros (humble, iron, jazzy, kilted)
-- [ ] Add download button for generated files
+- [x] Add download button for generated files
 - [ ] Visualize package structure (with directories)
 
 
