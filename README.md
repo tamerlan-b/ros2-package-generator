@@ -33,7 +33,7 @@ streamlit run ros2_package_generator.py
 - [x] Add the ability to edit publishers and subscribers
 - [ ] Update README
 - [ ] Add support for:
-  - [ ] ros2-params
+  - [x] ros2-params
   - [ ] ros2-timers
   - [ ] ros2-service
   - [ ] ros2-actions

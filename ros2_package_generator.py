@@ -22,6 +22,7 @@ if "node_info" not in st.session_state:
         'is_component': True,
         'include_pkgs': set(),
         'includes': set(),
+        'params': [],
         'publishers': [],
         'subscribers': [],
         "package_name": "my_package",
@@ -200,6 +201,27 @@ def add_publisher():
         add_msg_include(pub_info["msg_type"])
         st.rerun()
 
+@st.dialog("Add Parameter")
+def add_parameter():
+    param_info = {}
+    param_info["name"] = st.text_input("Name")
+    name_busy = any(p["name"] == param_info["name"] for p in st.session_state["node_info"]["params"])
+    if name_busy:
+        st.error(f'Name {param_info["name"]} is already used for another parameter')
+        
+    param_types = ["bool", "int", "double", "std::string", 
+                    "std::vector<uint8_t>", "std::vector<bool>", 
+                    "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
+    param_info["type"] = st.selectbox("Type", param_types)
+    
+    default_value = st.text_input("Default value", placeholder="Optional field")
+    if default_value != "":
+        param_info["default"] = default_value
+    
+    if st.button("Submit"):
+        st.session_state["node_info"]["params"].append(param_info)
+        st.rerun()
+
 @st.dialog("Edit Publisher")
 def edit_publisher(pub_var_name):
     index = [i for i, p in enumerate(st.session_state["node_info"]['publishers']) if p["var_name"] == pub_var_name][0]
@@ -234,6 +256,30 @@ def edit_subscriber(sub_var_name):
         add_msg_include(sub_info["msg_type"])
         st.rerun()
 
+@st.dialog("Edit Parameter")
+def edit_parameter(param_name):
+    index = [i for i, p in enumerate(st.session_state["node_info"]['params']) if p["name"] == param_name][0]
+    editing_param = st.session_state["node_info"]['params'][index]
+    param_info = {}
+    param_info["name"] = st.text_input("Name", value="" if editing_param == {} or 'name' not in editing_param.keys() else editing_param["name"])
+    name_busy = any(p["name"] == param_info["name"] for p in st.session_state["node_info"]["params"])
+    if name_busy:
+        if editing_param and editing_param['name'] != param_info["name"]:
+            st.error(f'Name {param_info["name"]} is already used for another parameter')
+        
+    param_types = ["bool", "int", "double", "std::string", 
+                    "std::vector<uint8_t>", "std::vector<bool>", 
+                    "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
+    param_info["type"] = st.selectbox("Type", param_types, index=0 if editing_param == {} or 'type' not in editing_param.keys() else [i for i, pt in enumerate(param_types) if pt == editing_param["type"]][0])
+    
+    default_value = st.text_input("Default value", placeholder="Optional field", value="" if editing_param == {} or 'default' not in editing_param.keys() else editing_param["default"])
+    if default_value != "":
+        param_info["default"] = default_value
+    
+    if st.button("Submit"):
+        st.session_state["node_info"]["params"][index] = param_info
+        st.rerun()
+
 with st.sidebar:
     # TODO: Remove button later
     if st.button("Fill by default"):
@@ -249,9 +295,12 @@ with st.sidebar:
                 'sensor_msgs/msg/image.hpp',
                 'sensor_msgs/msg/point_cloud2.hpp'
             },
+            'params': [
+                {"name": "buffer_size", "type": "int"},
+                {"name": "path_to_onnx", "type": "std::string"},
+                ],
             'publishers': [
                 {"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}},
-                {"msg_type": "std_msgs::msg::String", "var_name": "text_pub", "topic": "/text", "qos": {"is_default": True, "queue_size": 10}},
                 ],
             'subscribers': [
                 {"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}},
@@ -308,7 +357,7 @@ with st.expander("Node structure", expanded=True):
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': [], 'pub': []}
+    checkboxes = {'sub': [], 'pub': [], 'params': []}
         
     text_with_button("Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
     for sub in st.session_state["node_info"]["subscribers"]:
@@ -320,10 +369,16 @@ with st.expander("Node structure", expanded=True):
         var_name = pub["var_name"]
         checkboxes['pub'].append(checkboxes_with_button(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=pub["var_name"], on_click=lambda var=var_name: edit_publisher(var)))
     
+    text_with_button("Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
+    for par in st.session_state["node_info"]["params"]:
+        var_name = par["name"]
+        checkboxes['params'].append(checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var)))
+    
     # Remove selected items
     if st.button("Remove selected items 🗑️", type="primary"):
         st.session_state["node_info"]["publishers"] = [p for i, p in enumerate(st.session_state["node_info"]["publishers"], 0) if checkboxes['pub'][i] == False]
         st.session_state["node_info"]["subscribers"] = [s for i, s in enumerate(st.session_state["node_info"]["subscribers"], 0) if checkboxes['sub'][i] == False]
+        st.session_state["node_info"]["params"] = [p for i, p in enumerate(st.session_state["node_info"]["params"], 0) if checkboxes['params'][i] == False]
         # TODO: Remove includes more safely
         refresh_includes()
         st.rerun()

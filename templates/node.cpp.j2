@@ -11,6 +11,13 @@ namespace {{ node_ns }}
   tf_listener_(tf_buffer_)
 {% endif %}
 {
+    {% if params %}
+    // Params
+    {% endif %}
+    {% for par in params %}
+    auto {{ par.name }} = this->declare_parameter<{{ par.type }}>("{{ par.name }}"{% if par.default is defined %}, {{ par.default }}{% endif %});
+    {% endfor %}
+    
     {% if publishers %}
     // Publishers
     {% endif %}
