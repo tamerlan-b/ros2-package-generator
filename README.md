@@ -22,7 +22,7 @@ Support for all major ROS2 node elements:
 - [x] **📤 Publishers** (with QoS, topic, message type configuration)
 - [x] **📥 Subscribers** (with auto-generated callback functions)
 - [ ] **🔧 Services** (servers and clients)
-- [ ] **⏱️ Timers** (periodic callbacks)
+- [x] **⏱️ Timers** (periodic callbacks)
 - [x] **⚙️ Parameters** (declaration and initialization)
 - [ ] **🎯 Actions** (action servers)
 
@@ -89,11 +89,11 @@ streamlit run ros2_package_generator.py
 - [x] Update README
 - [ ] Add support for:
   - [x] ros2-params
-  - [ ] ros2-timers
+  - [x] ros2-timers
   - [ ] ros2-service
   - [ ] ros2-actions
   - [ ] message_filters
-- [ ] Support newer ROS2 distros (humble, iron, jazzy, kilted)
+- [ ] Support newer ROS2 distros (humble, iron, jazzy)
 - [x] Add download button for generated files
 - [ ] Visualize package structure (with directories)
 

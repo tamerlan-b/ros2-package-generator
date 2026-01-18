@@ -30,6 +30,7 @@ if "node_info" not in st.session_state:
         'params': [],
         'publishers': [],
         'subscribers': [],
+        'timers': [],
         "package_name": "my_package",
         "cmake_target_name": "my_library"
     }
@@ -224,6 +225,16 @@ def add_parameter():
         st.session_state["node_info"]["params"].append(param_info)
         st.rerun()
 
+@st.dialog("Add Timer")
+def add_timer():
+    timer_info = {}
+    timer_info["var_name"] = st.text_input("Variable name")
+    timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1)
+    timer_info["callback"] = st.text_input("Callback function name")
+    if st.button("Submit"):
+        st.session_state["node_info"]["timers"].append(timer_info)
+        st.rerun()
+
 @st.dialog("Edit Publisher")
 def edit_publisher(pub_var_name):
     index = [i for i, p in enumerate(st.session_state["node_info"]['publishers']) if p["var_name"] == pub_var_name][0]
@@ -279,6 +290,18 @@ def edit_parameter(param_name):
         st.session_state["node_info"]["params"][index] = param_info
         st.rerun()
 
+@st.dialog("Edit Timer")
+def edit_timer(timer_var_name):
+    index = [i for i, t in enumerate(st.session_state["node_info"]['timers']) if t["var_name"] == timer_var_name][0]
+    editing_timer = st.session_state["node_info"]['timers'][index]
+    timer_info = {}
+    timer_info["var_name"] = st.text_input("Variable name", value=editing_timer.get("var_name", ""))
+    timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1, value=editing_timer.get("period", ""))
+    timer_info["callback"] = st.text_input("Callback function name", value=editing_timer.get("callback", ""))
+    if st.button("Submit"):
+        st.session_state["node_info"]["timers"][index] = timer_info
+        st.rerun()
+
 with st.sidebar:
     # TODO: Remove button later
     if st.button("Fill by default"):
@@ -306,6 +329,9 @@ with st.sidebar:
             'subscribers': [
                 {"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "sptr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}},
                 {"msg_type": "geometry_msgs::msg::PoseStamped", "var_name": "pose_sub", "callback": "pose_callback", "callback_arg_type": "sptr", "topic": "/initial_pose", "qos": {"is_default": True, "queue_size": 4}},
+            ],
+            "timers": [
+                {"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},
             ],
             "package_name": "my_package",
             "cmake_target_name": "my_library"
@@ -359,19 +385,24 @@ with st.expander("Node structure", expanded=True):
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': [], 'pub': [], 'params': []}
+    checkboxes = {'sub': [], 'pub': [], 'params': [], 'timers': []}
         
-    text_with_button("Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
+    text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
     for sub in st.session_state["node_info"]["subscribers"]:
         var_name = sub["var_name"]
         checkboxes['sub'].append(checkboxes_with_button(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=sub["var_name"], on_click=lambda var=var_name: edit_subscriber(var)))
     
-    text_with_button("Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
+    text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
     for pub in st.session_state["node_info"]["publishers"]:
         var_name = pub["var_name"]
         checkboxes['pub'].append(checkboxes_with_button(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=pub["var_name"], on_click=lambda var=var_name: edit_publisher(var)))
     
-    text_with_button("Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
+    text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
+    for tim in st.session_state["node_info"]["timers"]:
+        var_name = tim["var_name"]
+        checkboxes['timers'].append(checkboxes_with_button(f'`{tim["var_name"]}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=tim["var_name"], on_click=lambda var=var_name: edit_timer(var)))
+    
+    text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
     for par in st.session_state["node_info"]["params"]:
         var_name = par["name"]
         checkboxes['params'].append(checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var)))
@@ -381,6 +412,7 @@ with st.expander("Node structure", expanded=True):
         st.session_state["node_info"]["publishers"] = [p for i, p in enumerate(st.session_state["node_info"]["publishers"], 0) if checkboxes['pub'][i] == False]
         st.session_state["node_info"]["subscribers"] = [s for i, s in enumerate(st.session_state["node_info"]["subscribers"], 0) if checkboxes['sub'][i] == False]
         st.session_state["node_info"]["params"] = [p for i, p in enumerate(st.session_state["node_info"]["params"], 0) if checkboxes['params'][i] == False]
+        st.session_state["node_info"]["timers"] = [t for i, t in enumerate(st.session_state["node_info"]["timers"], 0) if checkboxes['timers'][i] == False]
         # TODO: Remove includes more safely
         refresh_includes()
         st.rerun()

@@ -1,11 +1,16 @@
 #include "{{ package_name }}/{{ node_filename }}.hpp"
+{% if timers %}
+#include <chrono>
+using namespace std::chrono_literals;
+{% endif %}
+
 {% if node_ns %}
 namespace {{ node_ns }}
 {
 {% endif %}
 {% set suffixes = {'obj': '', 'uptr': '::UniquePtr', 'sptr': '::SharedPtr', 'csptr': '::ConstSharedPtr'} %}
 
-{{ node_classname }}::{{ node_classname }}({% if is_component %}const rclcpp::NodeOptions & options{% endif %}): Node("{{ node_name }}"{% if is_component %}, options{% endif %})
+{{ node_classname }}::{{ node_classname }}({% if is_component %}const rclcpp::NodeOptions& options{% endif %}): Node("{{ node_name }}"{% if is_component %}, options{% endif %})
 {% if tf_listener %}
 , tf_buffer_(this->get_clock()),
   tf_listener_(tf_buffer_)
@@ -63,10 +68,24 @@ namespace {{ node_ns }}
         "{{ sub.topic }}", {{ qos_expr }},
       [&]({{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg) { this->{{ sub.callback }}(std::move(msg)); });
     {% endfor %}
+
+    {% if timers %}
+    // Timers
+    {% endif %}
+    {% for tim in timers %}
+    this->{{ tim.var_name }} = this->create_wall_timer({{ tim.period }}ms, [&](){ this->{{ tim.callback }}(); });
+    {% endfor %}
 }
 
 {% for sub in subscribers %}
 void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg)
+{
+    // TODO: add implementation
+}
+{% endfor %}
+
+{% for tim in timers %}
+void {{ node_classname }}::{{ tim.callback }}()
 {
     // TODO: add implementation
 }

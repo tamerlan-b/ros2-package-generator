@@ -32,6 +32,10 @@ private:
     rclcpp::Subscription<{{ sub.msg_type }}>::SharedPtr {{ sub.var_name }};
     void {{ sub.callback }}(const {{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg);
     {% endfor %}
+    {% for tim in timers %}
+    rclcpp::TimerBase::SharedPtr {{ tim.var_name }};
+    void {{ tim.callback }}();
+    {% endfor %}
 };
 
 {% if node_ns %}
