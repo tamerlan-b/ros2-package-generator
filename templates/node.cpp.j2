@@ -15,7 +15,7 @@ namespace {{ node_ns }}
     // Params
     {% endif %}
     {% for par in params %}
-    auto {{ par.name }} = this->declare_parameter<{{ par.type }}>("{{ par.name }}"{% if par.default is defined %}, {{ par.default }}{% endif %});
+    auto {{ par.name }} = this->declare_parameter<{{ par.type }}>("{{ par.name }}", {{ par.default }});
     {% endfor %}
     
     {% if publishers %}

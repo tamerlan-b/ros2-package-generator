@@ -214,9 +214,9 @@ def add_parameter():
                     "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
     param_info["type"] = st.selectbox("Type", param_types)
     
-    default_value = st.text_input("Default value", placeholder="Optional field")
-    if default_value != "":
-        param_info["default"] = default_value
+    param_info["default"] = st.text_input("Default value", placeholder="Optional field")
+    if param_info["default"] == "":
+        st.error("You should enter default value")
     
     if st.button("Submit"):
         st.session_state["node_info"]["params"].append(param_info)
@@ -272,9 +272,9 @@ def edit_parameter(param_name):
                     "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
     param_info["type"] = st.selectbox("Type", param_types, index=0 if editing_param == {} or 'type' not in editing_param.keys() else [i for i, pt in enumerate(param_types) if pt == editing_param["type"]][0])
     
-    default_value = st.text_input("Default value", placeholder="Optional field", value="" if editing_param == {} or 'default' not in editing_param.keys() else editing_param["default"])
-    if default_value != "":
-        param_info["default"] = default_value
+    param_info["default"] = st.text_input("Default value", placeholder="Optional field", value="" if editing_param == {} or 'default' not in editing_param.keys() else editing_param["default"])
+    if param_info["default"] == "":
+        st.error("You should enter default value")
     
     if st.button("Submit"):
         st.session_state["node_info"]["params"][index] = param_info
@@ -296,8 +296,8 @@ with st.sidebar:
                 'sensor_msgs/msg/point_cloud2.hpp'
             },
             'params': [
-                {"name": "buffer_size", "type": "int"},
-                {"name": "path_to_onnx", "type": "std::string"},
+                {"name": "buffer_size", "type": "int", "default": "10"},
+                {"name": "path_to_onnx", "type": "std::string", "default": "\"\""},
                 ],
             'publishers': [
                 {"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}},
