@@ -17,8 +17,8 @@ if "node_info" not in st.session_state:
     # TODO: upgrade dict structure
     st.session_state["node_info"] = {
         "node_filename": "node",
-        'node_classname': 'Node',
-        'node_name': 'node',
+        'node_classname': 'MyNode',
+        'node_name': 'my_node',
         'is_component': True,
         'include_pkgs': set(),
         'includes': set(),
@@ -285,15 +285,17 @@ with st.sidebar:
     if st.button("Fill by default"):
         st.session_state["node_info"] = {
             "node_filename": "node",
-            'node_classname': 'Node',
+            'node_classname': 'MyNode',
             'node_name': 'node',
             'is_component': True,
             'include_pkgs': {
-                'sensor_msgs'
+                'sensor_msgs',
+                'geometry_msgs',
             },
             'includes': {
                 'sensor_msgs/msg/image.hpp',
-                'sensor_msgs/msg/point_cloud2.hpp'
+                'sensor_msgs/msg/point_cloud2.hpp',
+                'geometry_msgs/msg/pose_stamped.hpp',
             },
             'params': [
                 {"name": "buffer_size", "type": "int", "default": "10"},
@@ -303,8 +305,8 @@ with st.sidebar:
                 {"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}},
                 ],
             'subscribers': [
-                {"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}},
-                {"msg_type": "geometry_msgs::msg::PoseStamped", "var_name": "pose_sub", "callback": "pose_callback", "topic": "/initial_pose", "qos": {"is_default": True, "queue_size": 4}},
+                {"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "sptr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}},
+                {"msg_type": "geometry_msgs::msg::PoseStamped", "var_name": "pose_sub", "callback": "pose_callback", "callback_arg_type": "sptr", "topic": "/initial_pose", "qos": {"is_default": True, "queue_size": 4}},
             ],
             "package_name": "my_package",
             "cmake_target_name": "my_library"
@@ -313,7 +315,7 @@ with st.sidebar:
     st.session_state["node_info"]["package_name"] = st.text_input("Package name", "my_package")
     st.session_state["node_info"]["node_filename"] = st.text_input("Node filename", "my_node")
     st.session_state["node_info"]["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")
-    st.session_state["node_info"]["node_classname"] = st.text_input("Node C++ classname", "Node")
+    st.session_state["node_info"]["node_classname"] = st.text_input("Node C++ classname", "MyNode")
     st.session_state["node_info"]["node_name"] = st.text_input("Node name", "my_node")
     st.session_state["node_info"]["node_ns"] = st.text_input("Node namespace", "my_ns")
     node_type = st.radio("Node type", ["node", "component"], index=1, horizontal=True)
