@@ -1,13 +1,12 @@
 #! /usr/bin/python3
 
 import streamlit as st
-import jinja2
 from streamlit_tags import st_tags
 from graphviz import Digraph
-import re
 import zipfile
 import io
 from typing import Dict
+from generator_core import Ros2PkgGenerator
 
 st.title("ROS2 Package Generator")
 
@@ -18,109 +17,8 @@ if "msg_autocomplete" not in st.session_state:
     with open("ros_messages.txt", 'r') as f:
         st.session_state["msg_autocomplete"] = f.readlines()
 
-if "node_info" not in st.session_state:
-    # TODO: upgrade dict structure
-    st.session_state["node_info"] = {
-        "node_filename": "node",
-        'node_classname': 'MyNode',
-        'node_name': 'my_node',
-        'is_component': True,
-        'include_pkgs': set(),
-        'includes': set(),
-        'params': [],
-        'publishers': [],
-        'subscribers': [],
-        'timers': [],
-        "package_name": "my_package",
-        "cmake_target_name": "my_library"
-    }
-
-def _camel_to_snake(name: str) -> str:
-    """
-    Converts CamelCase to snake_case.
-    
-    Examples:
-        PointCloud2 -> point_cloud2
-        TwistStamped -> twist_stamped
-        IMU -> imu
-    """
-    if not name:
-        return name
-    
-    # Proccess abbreviations in the beginning
-    # Example: IMUData -> imu_data
-    
-    s1 = re.sub(r'([a-z])([A-Z])', r'\1_\2', name)
-    s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1_\2', s1)   
-    return s2.lower()
-
-def convert_msg_format(msg_type: str) -> tuple[str, str]:
-    """
-    Convert message from C++ type to path-like format.
-    
-    Args:
-        msg_type: Input message type in C++ format ("sensor_msgs::msg::Image")
-    
-    Examples:
-        >>> convert_msg_format("sensor_msgs::msg::PointCloud2")
-        "sensor_msgs/msg/point_cloud2", "sensor_msgs"
-    """
-    # Normalize input data
-    normalized = msg_type.replace('/', '::')
-    
-    if '::msg::' not in normalized and '::' in normalized:
-        # Add 'msg' if missing
-        parts = normalized.split('::')
-        if len(parts) == 2:
-            normalized = f"{parts[0]}::msg::{parts[1]}"
-    
-    # Split
-    if '::msg::' in normalized:
-        package, _, message = normalized.split('::')
-    elif '::' in normalized:
-        package, message = normalized.split('::')
-        # Suppose it is msg
-        _ = "msg"
-    else:
-        # If can't parse
-        package, message = "unknown", normalized
-    
-    # Convert message to snake_case
-    message_snake = _camel_to_snake(message)
-    
-    return f"{package}/msg/{message_snake}", package
-
-def generate_files():
-    env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader('templates'),
-            trim_blocks=True,
-            lstrip_blocks=True
-        )
-    hpp_template = env.get_template('node.hpp.j2')
-    cpp_template = env.get_template('node.cpp.j2')
-    xml_template = env.get_template('package.xml.j2')
-    cmake_template = env.get_template('CMakeLists.txt.j2')
-    config = st.session_state["node_info"]
-    return {
-        f'{st.session_state["node_info"]["node_filename"]}.hpp': hpp_template.render(**config), 
-        f'{st.session_state["node_info"]["node_filename"]}.cpp': cpp_template.render(**config), 
-        "CMakeLists.txt": cmake_template.render(**config), 
-        'package.xml': xml_template.render(**config), 
-            }
-
-def add_msg_include(msg_type: str):
-    msg_type_snake, msg_pkg = convert_msg_format(msg_type)
-    msg_include = f"{msg_type_snake}.hpp"
-    st.session_state["node_info"]["includes"].add(msg_include)
-    st.session_state["node_info"]["include_pkgs"].add(msg_pkg)
-
-def refresh_includes():
-    st.session_state["node_info"]['include_pkgs'] = set()
-    st.session_state["node_info"]['includes'] = set()       
-    for p in st.session_state["node_info"]["publishers"]:
-        add_msg_include(p["msg_type"])
-    for s in st.session_state["node_info"]["subscribers"]:
-        add_msg_include(s["msg_type"])
+if 'gen' not in st.session_state:
+    st.session_state['gen'] = Ros2PkgGenerator()
 
 def get_index(value, iterable, default_index=-1):
     for i, item in enumerate(iterable, 0):
@@ -166,15 +64,7 @@ def get_pub_sub_info(prior_info: Dict={}) -> Dict:
         key="msgs_tags"
     )
     info["msg_type"] = None if len(tags) == 0 else tags[0]
-    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value=prior_info.get("var_name", ""))
-    
-    # Сheck if variable's name is free
-    pub_name_busy = any(p["var_name"] == info["var_name"] for p in st.session_state["node_info"]["publishers"])
-    sub_name_busy = any(s["var_name"] == info["var_name"] for s in st.session_state["node_info"]["subscribers"])
-    name_busy = pub_name_busy or sub_name_busy   
-    if name_busy and 'var_name' not in prior_info:
-        st.error(f'Name {info["var_name"]} is already used for another variable')
-            
+    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value=prior_info.get("var_name", ""))            
     info["topic"] = st.text_input("Topic name", placeholder="/points", value=prior_info.get("topic", ""))
     return info
 
@@ -191,9 +81,7 @@ def add_subscriber():
         sub_info["qos"] = add_qos()
     
     if st.button("Submit"):
-        st.session_state["node_info"]["subscribers"].append(sub_info)
-        # Add to include lists
-        add_msg_include(sub_info["msg_type"])
+        st.session_state['gen'].add_subscription(sub_info)
         st.rerun()
 
 @st.dialog("Add Publisher")
@@ -202,19 +90,13 @@ def add_publisher():
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos()
     if st.button("Submit"):
-        st.session_state["node_info"]["publishers"].append(pub_info)
-        # Add to include lists
-        add_msg_include(pub_info["msg_type"])
+        st.session_state['gen'].add_publisher(pub_info)
         st.rerun()
 
 @st.dialog("Add Parameter")
 def add_parameter():
     param_info = {}
-    param_info["name"] = st.text_input("Name")
-    name_busy = any(p["name"] == param_info["name"] for p in st.session_state["node_info"]["params"])
-    if name_busy:
-        st.error(f'Name {param_info["name"]} is already used for another parameter')
-        
+    param_info["name"] = st.text_input("Name")        
     param_info["type"] = st.selectbox("Type", options=st.session_state["param_types"])
     
     param_info["default"] = st.text_input("Default value")
@@ -222,7 +104,7 @@ def add_parameter():
         st.error("You should enter default value")
     
     if st.button("Submit"):
-        st.session_state["node_info"]["params"].append(param_info)
+        st.session_state['gen'].add_param(param_info)
         st.rerun()
 
 @st.dialog("Add Timer")
@@ -232,26 +114,22 @@ def add_timer():
     timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1)
     timer_info["callback"] = st.text_input("Callback function name")
     if st.button("Submit"):
-        st.session_state["node_info"]["timers"].append(timer_info)
+        st.session_state['gen'].add_timer(timer_info)
         st.rerun()
 
 @st.dialog("Edit Publisher")
 def edit_publisher(pub_var_name):
-    index = [i for i, p in enumerate(st.session_state["node_info"]['publishers']) if p["var_name"] == pub_var_name][0]
-    editing_pub = st.session_state["node_info"]['publishers'][index]
+    editing_pub, index = st.session_state['gen'].get_publisher(pub_var_name)
     pub_info = get_pub_sub_info(editing_pub)
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos(editing_pub["qos"])
     if st.button("Apply"):
-        st.session_state["node_info"]['publishers'][index] = pub_info
-        refresh_includes()
-        add_msg_include(pub_info["msg_type"])
+        st.session_state['gen'].update_publisher(pub_info, index)
         st.rerun()
 
 @st.dialog("Edit Subscriber")
 def edit_subscriber(sub_var_name):
-    index = [i for i, p in enumerate(st.session_state["node_info"]['subscribers']) if p["var_name"] == sub_var_name][0]
-    editing_sub = st.session_state["node_info"]['subscribers'][index]
+    editing_sub, index = st.session_state['gen'].get_subscription(sub_var_name)
     sub_info = get_pub_sub_info(editing_sub)
     
     sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback", value= "" if editing_sub == {} or 'callback' not in editing_sub.keys() else editing_sub["callback"])
@@ -264,91 +142,68 @@ def edit_subscriber(sub_var_name):
         sub_info["qos"] = add_qos(editing_sub["qos"])
     
     if st.button("Apply"):
-        st.session_state["node_info"]['subscribers'][index] = sub_info
-        refresh_includes()
-        add_msg_include(sub_info["msg_type"])
+        st.session_state['gen'].update_subscription(sub_info, index)
         st.rerun()
 
 @st.dialog("Edit Parameter")
 def edit_parameter(param_name):
-    index = [i for i, p in enumerate(st.session_state["node_info"]['params']) if p["name"] == param_name][0]
-    editing_param = st.session_state["node_info"]['params'][index]
+    editing_param, index = st.session_state['gen'].get_param(param_name)
     param_info = {}
     param_info["name"] = st.text_input("Name", value=editing_param.get("name", ""))
-    name_busy = any(p["name"] == param_info["name"] for p in st.session_state["node_info"]["params"])
-    if name_busy:
-        if editing_param and editing_param['name'] != param_info["name"]:
-            st.error(f'Name {param_info["name"]} is already used for another parameter')
-
     param_info["type"] = st.selectbox("Type", st.session_state["param_types"], index=get_index(editing_param["type"], st.session_state["param_types"], 0))
-    
     param_info["default"] = st.text_input("Default value", value=editing_param.get("default", ""))
     if param_info["default"] == "":
         st.error("You should enter default value")
     
     if st.button("Submit"):
-        st.session_state["node_info"]["params"][index] = param_info
+        st.session_state['gen'].update_param(param_info, index)
         st.rerun()
 
 @st.dialog("Edit Timer")
 def edit_timer(timer_var_name):
-    index = [i for i, t in enumerate(st.session_state["node_info"]['timers']) if t["var_name"] == timer_var_name][0]
-    editing_timer = st.session_state["node_info"]['timers'][index]
+    editing_timer, index = st.session_state['gen'].get_timer(timer_var_name)
     timer_info = {}
     timer_info["var_name"] = st.text_input("Variable name", value=editing_timer.get("var_name", ""))
     timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1, value=editing_timer.get("period", ""))
     timer_info["callback"] = st.text_input("Callback function name", value=editing_timer.get("callback", ""))
     if st.button("Submit"):
-        st.session_state["node_info"]["timers"][index] = timer_info
+        st.session_state['gen'].update_timer(timer_var_name, index)
         st.rerun()
 
 with st.sidebar:
-    # TODO: Support newer ROS2 distros
-    st.session_state["node_info"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy"])
-   
+    
     # TODO: Remove button later
     if st.button("Fill by default"):
-        st.session_state["node_info"] = {
-            "node_filename": "node",
-            'node_classname': 'MyNode',
-            'node_name': 'node',
-            'is_component': True,
-            'include_pkgs': {
-                'sensor_msgs',
-                'geometry_msgs',
-            },
-            'includes': {
-                'sensor_msgs/msg/image.hpp',
-                'sensor_msgs/msg/point_cloud2.hpp',
-                'geometry_msgs/msg/pose_stamped.hpp',
-            },
-            'params': [
-                {"name": "buffer_size", "type": "int", "default": "10"},
-                {"name": "path_to_onnx", "type": "std::string", "default": "\"\""},
-                ],
-            'publishers': [
-                {"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}},
-                ],
-            'subscribers': [
-                {"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "sptr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}},
-                {"msg_type": "geometry_msgs::msg::PoseStamped", "var_name": "pose_sub", "callback": "pose_callback", "callback_arg_type": "sptr", "topic": "/initial_pose", "qos": {"is_default": True, "queue_size": 4}},
-            ],
-            "timers": [
-                {"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},
-            ],
-            "package_name": "my_package",
-            "cmake_target_name": "my_library"
-        }
+        st.session_state["gen"]["node_filename"] = "node"
+        st.session_state["gen"]['node_classname'] = 'MyNode'
+        st.session_state["gen"]['node_name'] = 'node'
+        st.session_state["gen"]['is_component'] = True
+        st.session_state["gen"]['include_pkgs'] = {}
+        st.session_state["gen"]['includes'] = {}
+        st.session_state["gen"]['params'] = []
+        st.session_state["gen"]['publishers'] = []
+        st.session_state["gen"]['subscribers'] = []
+        st.session_state["gen"]["timers"] = []
+        st.session_state["gen"]["package_name"] = "my_package"
+        st.session_state["gen"]["cmake_target_name"] = "my_library"
+        st.session_state["gen"].add_publisher({"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].add_subscription({"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "sptr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].add_subscription({"msg_type": "geometry_msgs::msg::PoseStamped", "var_name": "pose_sub", "callback": "pose_callback", "callback_arg_type": "sptr", "topic": "/initial_pose", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].add_timer({"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},)
+        st.session_state["gen"].add_param({"name": "buffer_size", "type": "int", "default": "10"})
+        st.session_state["gen"].add_param({"name": "path_to_onnx", "type": "std::string", "default": "\"\""})
 
-    st.session_state["node_info"]["package_name"] = st.text_input("Package name", "my_package")
-    st.session_state["node_info"]["node_filename"] = st.text_input("Node filename", "my_node")
-    st.session_state["node_info"]["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")
-    st.session_state["node_info"]["node_classname"] = st.text_input("Node C++ classname", "MyNode")
-    st.session_state["node_info"]["node_name"] = st.text_input("Node name", "my_node")
-    st.session_state["node_info"]["node_ns"] = st.text_input("Node namespace", "my_ns")
+    # TODO: Support newer ROS2 distros
+    st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy"])
+    st.session_state['gen']["package_name"] = st.text_input("Package name", "my_package")
+    st.session_state['gen']["node_filename"] = st.text_input("Node filename", "my_node")
+    st.session_state['gen']["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")
+    st.session_state['gen']["node_classname"] = st.text_input("Node C++ classname", "MyNode")
+    st.session_state['gen']["node_name"] = st.text_input("Node name", "my_node")
+    st.session_state['gen']["node_ns"] = st.text_input("Node namespace", "my_ns")
     node_type = st.radio("Node type", ["node", "component"], index=1, horizontal=True)
-    st.session_state["node_info"]["is_component"] = node_type == "component"
-    st.session_state["node_info"]["tf_listener"] = st.checkbox("Add tf listener", False)
+    st.session_state['gen']["is_component"] = node_type == "component"
+    st.session_state['gen']["tf_listener"] = st.checkbox("Add tf listener", False)
 
 def draw_node() -> Digraph:
     dot = Digraph(comment='ROS2 Node', format='svg')
@@ -359,17 +214,17 @@ def draw_node() -> Digraph:
     dot.attr('edge', arrowhead='normal')
     
     # Add node (in the middle)
-    dot.node('NODE', st.session_state["node_info"]['node_name'], shape='box', style='filled', 
+    dot.node('NODE', st.session_state['gen']['node_name'], shape='box', style='filled', 
             fillcolor='lightblue', fontsize='16', fontname='Arial')
 
     # Add input topics (subscribers) - to the left
-    for i, sub in enumerate(st.session_state["node_info"]['subscribers']):
+    for i, sub in enumerate(st.session_state['gen']['subscribers']):
         dot.node(f'IN_{i}', sub["topic"], shape='parallelogram', 
                 style='filled', fillcolor='lightcoral')
         dot.edge(f'IN_{i}', 'NODE', label='')
 
     # Add output topics (publishers) - to the right
-    for i, pub in enumerate(st.session_state["node_info"]['publishers']):
+    for i, pub in enumerate(st.session_state['gen']['publishers']):
         dot.node(f'OUT_{i}', pub["topic"], shape='parallelogram', 
                 style='filled', fillcolor='lightgreen')
         dot.edge('NODE', f'OUT_{i}', label='')
@@ -388,44 +243,39 @@ with st.expander("Node structure", expanded=True):
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': [], 'pub': [], 'params': [], 'timers': []}
+    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}}
         
     text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
-    for sub in st.session_state["node_info"]["subscribers"]:
+    for sub in st.session_state['gen']["subscribers"]:
         var_name = sub["var_name"]
-        checkboxes['sub'].append(checkboxes_with_button(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=sub["var_name"], on_click=lambda var=var_name: edit_subscriber(var)))
+        checkboxes['sub'][var_name] = checkboxes_with_button(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=sub["var_name"], on_click=lambda var=var_name: edit_subscriber(var))
     
     text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
-    for pub in st.session_state["node_info"]["publishers"]:
+    for pub in st.session_state['gen']["publishers"]:
         var_name = pub["var_name"]
-        checkboxes['pub'].append(checkboxes_with_button(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=pub["var_name"], on_click=lambda var=var_name: edit_publisher(var)))
+        checkboxes['pub'][var_name] = checkboxes_with_button(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=pub["var_name"], on_click=lambda var=var_name: edit_publisher(var))
     
     text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
-    for tim in st.session_state["node_info"]["timers"]:
+    for tim in st.session_state['gen']["timers"]:
         var_name = tim["var_name"]
-        checkboxes['timers'].append(checkboxes_with_button(f'`{tim["var_name"]}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=tim["var_name"], on_click=lambda var=var_name: edit_timer(var)))
+        checkboxes['timers'][var_name] = checkboxes_with_button(f'`{tim["var_name"]}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=tim["var_name"], on_click=lambda var=var_name: edit_timer(var))
     
     text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
-    for par in st.session_state["node_info"]["params"]:
+    for par in st.session_state['gen']["params"]:
         var_name = par["name"]
-        checkboxes['params'].append(checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var)))
+        checkboxes['params'][var_name] = checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var))
     
     # Remove selected items
     if st.button("Remove selected items 🗑️", type="primary"):
-        st.session_state["node_info"]["publishers"] = [p for i, p in enumerate(st.session_state["node_info"]["publishers"], 0) if checkboxes['pub'][i] == False]
-        st.session_state["node_info"]["subscribers"] = [s for i, s in enumerate(st.session_state["node_info"]["subscribers"], 0) if checkboxes['sub'][i] == False]
-        st.session_state["node_info"]["params"] = [p for i, p in enumerate(st.session_state["node_info"]["params"], 0) if checkboxes['params'][i] == False]
-        st.session_state["node_info"]["timers"] = [t for i, t in enumerate(st.session_state["node_info"]["timers"], 0) if checkboxes['timers'][i] == False]
-        # TODO: Remove includes more safely
-        refresh_includes()
+        st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
+        st.session_state['gen'].remove_subscriptions([k for k, v in checkboxes['sub'].items() if v])
+        st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
+        st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
         st.rerun()
     
     # Visualize node's graph
     with st.expander("Graph", expanded=True):
         st.graphviz_chart(draw_node())
-
-# Generate package's files
-files = generate_files()
 
 def create_package_archive_structure(pkg_name: str, node_name: str, 
                                     files_content: Dict[str, str]) -> io.BytesIO:
@@ -451,6 +301,9 @@ def create_package_archive_structure(pkg_name: str, node_name: str,
     zip_buffer.seek(0)
     return zip_buffer
 
+# Generate package's files
+files = st.session_state['gen'].generate_files()
+
 def simple_download_button():
     zip_files = {
         'hpp': [v for f, v in files.items() if ".hpp" in f][0],
@@ -460,14 +313,14 @@ def simple_download_button():
     }
     
     zip_buffer = create_package_archive_structure(
-        st.session_state["node_info"]["package_name"], 
-        st.session_state["node_info"]["node_filename"], 
+        st.session_state["gen"]["package_name"], 
+        st.session_state["gen"]["node_filename"], 
         zip_files)
     
     st.download_button(
         "📦 Download Package",
         data=zip_buffer,
-        file_name=f'{st.session_state["node_info"]["package_name"]}.zip',
+        file_name=f'{st.session_state["gen"]["package_name"]}.zip',
         mime="application/zip"
     )
 
@@ -476,7 +329,7 @@ simple_download_button()
 
 # Write terminal command for package generation
 with st.expander("ROS2 pkg create command:", expanded=True):
-    st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["node_info"]["package_name"]}', language="bash")
+    st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["gen"]["package_name"]}', language="bash")
 
 tabs = st.tabs(files.keys())
 index = 0
