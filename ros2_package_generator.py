@@ -9,7 +9,7 @@ import zipfile
 import io
 from typing import Dict
 
-st.title("ROS2 Foxy Package Generator")
+st.title("ROS2 Package Generator")
 
 if "msg_autocomplete" not in st.session_state:
     st.session_state["param_types"] =  [
@@ -303,6 +303,9 @@ def edit_timer(timer_var_name):
         st.rerun()
 
 with st.sidebar:
+    # TODO: Support newer ROS2 distros
+    st.session_state["node_info"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy"])
+   
     # TODO: Remove button later
     if st.button("Fill by default"):
         st.session_state["node_info"] = {
