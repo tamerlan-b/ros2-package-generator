@@ -1,3 +1,6 @@
+{% if advertisement %}
+// {{ advertisement }}
+{% endif %}
 #include "{{ package_name }}/{{ node_filename }}.hpp"
 {% if timers %}
 #include <chrono>
