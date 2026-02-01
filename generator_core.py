@@ -25,41 +25,41 @@ def _camel_to_snake(name: str) -> str:
     s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1_\2', s1)   
     return s2.lower()
 
-def convert_msg_format(msg_type: str) -> Tuple[str, str]:
+def convert_ros_format_generic(ros_type: str) -> Tuple[str, str]:
     """
-    Convert message from C++ type to path-like format.
+    Convert ROS type to path and extract package.
+    Works for msg, srv, and action types.
     
-    Args:
-        msg_type: Input message type in C++ format ("sensor_msgs::msg::Image")
-    
-    Examples:
-        >>> convert_msg_format("sensor_msgs::msg::PointCloud2")
-        "sensor_msgs/msg/point_cloud2", "sensor_msgs"
+    Returns:
+        tuple: (path, package_name)
     """
-    # Normalize input data
-    normalized = msg_type.replace('/', '::')
+    # Normalize input
+    normalized = ros_type.replace('/', '::')
     
-    if '::msg::' not in normalized and '::' in normalized:
-        # Add 'msg' if missing
+    # Check for known ROS types
+    for ros_type in ['msg', 'srv', 'action']:
+        pattern = f'::{ros_type}::'
+        if pattern in normalized:
+            package, _, message = normalized.split('::')
+            message_snake = _camel_to_snake(message)
+            return f"{package}/{ros_type}/{message_snake}", package
+    
+    # If no type specified, try to guess
+    if '::' in normalized:
         parts = normalized.split('::')
-        if len(parts) == 2:
-            normalized = f"{parts[0]}::msg::{parts[1]}"
+        if len(parts) == 3:
+            # Assume middle part is type (even if not standard)
+            package, ros_type, message = parts
+            message_snake = _camel_to_snake(message)
+            return f"{package}/{ros_type}/{message_snake}", package
+        elif len(parts) == 2:
+            # No type specified, assume 'msg'
+            package, message = parts
+            message_snake = _camel_to_snake(message)
+            return f"{package}/msg/{message_snake}", package
     
-    # Split
-    if '::msg::' in normalized:
-        package, _, message = normalized.split('::')
-    elif '::' in normalized:
-        package, message = normalized.split('::')
-        # Suppose it is msg
-        _ = "msg"
-    else:
-        # If can't parse
-        package, message = "unknown", normalized
-    
-    # Convert message to snake_case
-    message_snake = _camel_to_snake(message)
-    
-    return f"{package}/msg/{message_snake}", package
+    # Fallback
+    return ros_type, "unknown"
 
 def has_keys(dictionary, keys):
     return all(key in dictionary for key in keys)
@@ -129,7 +129,7 @@ class Ros2PkgGenerator:
         if self.is_name_busy(sub_info["var_name"]):
             return
         
-        msg_type_snake, msg_pkg = convert_msg_format(sub_info["msg_type"])
+        msg_type_snake, msg_pkg = convert_ros_format_generic(sub_info["msg_type"])
         msg_include = f"{msg_type_snake}.hpp"
         sub_info["depends"] = [msg_pkg]
         sub_info["includes"] = [msg_include]
@@ -161,7 +161,7 @@ class Ros2PkgGenerator:
         if self.is_name_busy(pub_info["var_name"]):
             return
         
-        msg_type_snake, msg_pkg = convert_msg_format(pub_info["msg_type"])
+        msg_type_snake, msg_pkg = convert_ros_format_generic(pub_info["msg_type"])
         msg_include = f"{msg_type_snake}.hpp"
         pub_info["depends"] = [msg_pkg]
         pub_info["includes"] = [msg_include]
