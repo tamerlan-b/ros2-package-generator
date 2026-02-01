@@ -2,6 +2,7 @@
 
 import jinja2
 import re
+from typing import Tuple, Dict, List
 
 ### UTILS ###
 
@@ -24,7 +25,7 @@ def _camel_to_snake(name: str) -> str:
     s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1_\2', s1)   
     return s2.lower()
 
-def convert_msg_format(msg_type: str) -> tuple[str, str]:
+def convert_msg_format(msg_type: str) -> Tuple[str, str]:
     """
     Convert message from C++ type to path-like format.
     
@@ -140,14 +141,14 @@ class Ros2PkgGenerator:
         if index >= 0:
             del self.config["subscribers"][index]
     
-    def remove_subscriptions(self, sub_var_names: list[str]):
+    def remove_subscriptions(self, sub_var_names: List[str]):
         self.config["subscribers"] = [s for s in self.config["subscribers"] if s["var_name"] not in sub_var_names]
     
-    def get_subscription(self, sub_var_name) -> tuple[dict, int]:
+    def get_subscription(self, sub_var_name) -> Tuple[dict, int]:
         index = next(iter([i for i, s in enumerate(self.config["subscribers"]) if s["var_name"] == sub_var_name]), -1)
         return (None if index < 0 else self.config["subscribers"][index], index)
     
-    def update_subscription(self, sub_info: dict, index: int):
+    def update_subscription(self, sub_info: Dict, index: int):
         if index >= 0 and index < len(self.config["subscribers"]):
             del self.config["subscribers"][index]
             self.add_subscription(sub_info)
@@ -172,14 +173,14 @@ class Ros2PkgGenerator:
         if index >= 0:
             del self.config["publishers"][index]
     
-    def remove_publishers(self, pub_var_names: list[str]):
+    def remove_publishers(self, pub_var_names: List[str]):
         self.config["publishers"] = [p for p in self.config["publishers"] if p["var_name"] not in pub_var_names]
     
-    def get_publisher(self, pub_var_name) -> tuple[dict, int]:
+    def get_publisher(self, pub_var_name) -> Tuple[dict, int]:
         index = next(iter([i for i, p in enumerate(self.config["publishers"]) if p["var_name"] == pub_var_name]), -1)
         return (None if index < 0 else self.config["publishers"][index], index)
     
-    def update_publisher(self, pub_info: dict, index: int):
+    def update_publisher(self, pub_info: Dict, index: int):
         if index >= 0 and index < len(self.config["publishers"]):
             del self.config["publishers"][index]
             self.add_publisher(pub_info)
@@ -198,14 +199,14 @@ class Ros2PkgGenerator:
         if index >= 0:
             del self.config["timers"][index]
     
-    def remove_timers(self, timer_var_names: list[str]):
+    def remove_timers(self, timer_var_names: List[str]):
         self.config["timers"] = [t for t in self.config["timers"] if t["var_name"] not in timer_var_names]
     
-    def get_timer(self, timer_var_name) -> tuple[dict, int]:
+    def get_timer(self, timer_var_name) -> Tuple[dict, int]:
         index = next(iter([i for i, t in enumerate(self.config["timers"]) if t["var_name"] == timer_var_name]), -1)
         return (None if index < 0 else self.config["timers"][index], index)
     
-    def update_timer(self, timer_info: dict, index: int):
+    def update_timer(self, timer_info: Dict, index: int):
         if index >= 0 and index < len(self.config["timers"]):
             del self.config["timers"][index]
             self.add_timer(timer_info)
@@ -224,14 +225,14 @@ class Ros2PkgGenerator:
         if index >= 0:
             del self.config["params"][index]
     
-    def remove_params(self, param_names: list[str]):
+    def remove_params(self, param_names: List[str]):
         self.config["params"] = [p for p in self.config["params"] if p["name"] not in param_names]
     
-    def get_param(self, param_var_name) -> tuple[dict, int]:
+    def get_param(self, param_var_name) -> Tuple[dict, int]:
         index = next(iter([i for i, p in enumerate(self.config["params"]) if p["var_name"] == param_var_name]), -1)
         return (None if index < 0 else self.config["params"][index], index)
     
-    def update_param(self, param_info: dict, index: int):
+    def update_param(self, param_info: Dict, index: int):
         if index >= 0 and index < len(self.config["params"]):
             del self.config["params"][index]
             self.add_param(param_info)
