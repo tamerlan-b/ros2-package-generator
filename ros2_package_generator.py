@@ -10,12 +10,32 @@ from generator_core import Ros2PkgGenerator
 
 st.title("ROS2 Package Generator")
 
-if "msg_autocomplete" not in st.session_state:
-    st.session_state["param_types"] =  [
+def parse_ros_interfaces_file(filename: str):
+    mapping = {
+        "Messages:": "msg",
+        "Services:": "srv", 
+        "Actions:": "action"
+    }
+    result = {}
+    current_key = None
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line in mapping:
+                current_key = mapping[line]
+                result[current_key] = []
+            elif current_key and line:
+                result[current_key].append(line.replace('/', '::'))
+    return result
+
+if "autocompletes" not in st.session_state:
+    autcompletes = {}
+    autcompletes = parse_ros_interfaces_file("ros2_interfaces.txt")
+    autcompletes["params"] =  [
         "bool", "int", "double", "std::string", "std::vector<int>", "std::vector<double>", "std::vector<std::string>"]
-    st.session_state["msg_autocomplete"] = []
-    with open("ros_messages.txt", 'r') as f:
-        st.session_state["msg_autocomplete"] = f.readlines()
+    st.session_state['autocompletes'] = autcompletes
 
 if 'gen' not in st.session_state:
     st.session_state['gen'] = Ros2PkgGenerator()
@@ -59,7 +79,7 @@ def get_pub_sub_info(prior_info: Dict={}) -> Dict:
         label='Message type',
         text='Press Enter to add',
         value=[] if 'msg_type' not in prior_info else [prior_info["msg_type"]],
-        suggestions=st.session_state["msg_autocomplete"],
+        suggestions=st.session_state['autocompletes']['msg'],
         maxtags=1,
         key="msgs_tags"
     )
@@ -97,7 +117,7 @@ def add_publisher():
 def add_parameter():
     param_info = {}
     param_info["name"] = st.text_input("Name")        
-    param_info["type"] = st.selectbox("Type", options=st.session_state["param_types"])
+    param_info["type"] = st.selectbox("Type", options=st.session_state['autocompletes']['params'])
     
     param_info["default"] = st.text_input("Default value")
     if param_info["default"] == "":
@@ -150,7 +170,7 @@ def edit_parameter(param_name):
     editing_param, index = st.session_state['gen'].get_param(param_name)
     param_info = {}
     param_info["name"] = st.text_input("Name", value=editing_param.get("name", ""))
-    param_info["type"] = st.selectbox("Type", st.session_state["param_types"], index=get_index(editing_param["type"], st.session_state["param_types"], 0))
+    param_info["type"] = st.selectbox("Type", st.session_state['autocompletes']['params'], index=get_index(editing_param["type"], st.session_state['autocompletes']['params'], 0))
     param_info["default"] = st.text_input("Default value", value=editing_param.get("default", ""))
     if param_info["default"] == "":
         st.error("You should enter default value")
