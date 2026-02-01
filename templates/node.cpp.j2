@@ -78,6 +78,15 @@ namespace {{ node_ns }}
     {% for tim in timers %}
     this->{{ tim.var_name }} = this->create_wall_timer({{ tim.period }}ms, [&](){ this->{{ tim.callback }}(); });
     {% endfor %}
+
+    {% if services %}
+    // Services
+    {% endif %}
+    {% for srv in services %}
+    this->{{ srv.var_name }} = this->create_service<{{ srv.srv_type }}>("{{ srv.srv_name }}", 
+      [this](const std::shared_ptr<{{ srv.srv_type }}::Request> request, std::shared_ptr<{{ srv.srv_type }}::Response> response){ this->{{ srv.callback_name }}(std::move(request), std::move(response)); }
+    );
+    {% endfor %}
 }
 
 {% for sub in subscribers %}
@@ -89,6 +98,15 @@ void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ suffixe
 
 {% for tim in timers %}
 void {{ node_classname }}::{{ tim.callback }}()
+{
+    // TODO: add implementation
+}
+{% endfor %}
+
+{% for srv in services %}
+void {{ node_classname }}::{{ srv.callback_name }}(
+  const std::shared_ptr<{{ srv.srv_type }}::Request> request, 
+  std::shared_ptr<{{ srv.srv_type }}::Response> response)
 {
     // TODO: add implementation
 }
