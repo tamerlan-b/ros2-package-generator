@@ -83,6 +83,7 @@ class Ros2PkgGenerator:
                 'publishers': [],
                 'subscribers': [],
                 'timers': [],
+                'services': [],
                 "package_name": "my_package",
                 "cmake_target_name": "my_library"
             }
@@ -118,6 +119,8 @@ class Ros2PkgGenerator:
             name_busy = name_busy or any(s["var_name"] == var_name for s in self.config["subscribers"])
         if not name_busy:
             name_busy = name_busy or any(t["var_name"] == var_name for t in self.config["timers"])
+        if not name_busy:
+            name_busy = name_busy or any(s["var_name"] == var_name for s in self.config["services"])
         # TODO: add checks for parameters
         return name_busy
     
@@ -237,6 +240,38 @@ class Ros2PkgGenerator:
             del self.config["params"][index]
             self.add_param(param_info)
     
+    # Services
+    
+    def add_service(self, srv_info):
+        if not has_keys(srv_info, ["type", "var_name", "name", "callback"]):
+            return
+        if self.is_name_busy(srv_info["var_name"]):
+            return
+        
+        srv_type_snake, srv_pkg = convert_ros_format_generic(srv_info["type"])
+        srv_include = f"{srv_type_snake}.hpp"
+        srv_info["depends"] = [srv_pkg]
+        srv_info["includes"] = [srv_include]
+        
+        self.config["services"].append(srv_info)
+    
+    def remove_service(self, srv_var_name: str):
+        index = next([i for i, s in enumerate(self.config["services"]) if s["var_name"] == srv_var_name], -1)
+        if index >= 0:
+            del self.config["services"][index]
+
+    def remove_services(self, srv_var_names: List[str]):
+        self.config["services"] = [s for s in self.config["services"] if s["var_name"] not in srv_var_names]
+
+    def get_service(self, srv_var_name) -> Tuple[dict, int]:
+        index = next(iter([i for i, s in enumerate(self.config["services"]) if s["var_name"] == srv_var_name]), -1)
+        return (None if index < 0 else self.config["services"][index], index)
+
+    def update_service(self, srv_info: Dict, index: int):
+        if index >= 0 and index < len(self.config["services"]):
+            del self.config["services"][index]
+            self.add_service(srv_info)
+    
     def __update_includes(self):
         deps = set()
         includes = set()
@@ -248,6 +283,10 @@ class Ros2PkgGenerator:
         for p in self.config["publishers"]:
             deps.update(p["depends"])
             includes.update(p["includes"])
+        
+        for s in self.config["services"]:
+            deps.update(s["depends"])
+            includes.update(s["includes"])
 
         self.config['include_pkgs'] = deps
         self.config['includes'] = includes

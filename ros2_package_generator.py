@@ -84,7 +84,7 @@ def get_pub_sub_info(prior_info: Dict={}) -> Dict:
         key="msgs_tags"
     )
     info["msg_type"] = None if len(tags) == 0 else tags[0]
-    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value=prior_info.get("var_name", ""))            
+    info["var_name"] = st.text_input("Variable name", placeholder="cloud_sub", value=prior_info.get("var_name", ""))
     info["topic"] = st.text_input("Topic name", placeholder="/points", value=prior_info.get("topic", ""))
     return info
 
@@ -135,6 +135,28 @@ def add_timer():
     timer_info["callback"] = st.text_input("Callback function name")
     if st.button("Submit"):
         st.session_state['gen'].add_timer(timer_info)
+        st.rerun()
+
+@st.dialog("Add Service server")
+def add_service():
+    srv_info = {}
+    srv_info["name"] = st.text_input("Service name")        
+    tags = st_tags(
+        label='Type',
+        text='Press Enter to add',
+        value=[],
+        suggestions=st.session_state['autocompletes']['srv'],
+        maxtags=1,
+        key="srvs_tags"
+    )
+    srv_info["type"] = None if len(tags) == 0 else tags[0]
+    srv_info["var_name"] = st.text_input("Variable name", placeholder="service")
+    srv_info["callback"] = st.text_input("Service handler method name", placeholder="add_two_ints")
+        
+    st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
+    
+    if st.button("Submit"):
+        st.session_state['gen'].add_service(srv_info)
         st.rerun()
 
 @st.dialog("Edit Publisher")
@@ -190,6 +212,30 @@ def edit_timer(timer_var_name):
         st.session_state['gen'].update_timer(timer_var_name, index)
         st.rerun()
 
+@st.dialog("Edit Service server")
+def edit_service(srv_var_name):
+    editing_srv, index = st.session_state['gen'].get_service(srv_var_name)
+    srv_info = {}
+    srv_info["name"] = st.text_input("Service name", value=editing_srv.get("name", ""))        
+    tags = st_tags(
+        label='Type',
+        text='Press Enter to add',
+        # value=[],
+        value=[] if 'type' not in editing_srv else [editing_srv["type"]],
+        suggestions=st.session_state['autocompletes']['srv'],
+        maxtags=1,
+        key="srvs_tags"
+    )
+    srv_info["type"] = None if len(tags) == 0 else tags[0]
+    srv_info["var_name"] = st.text_input("Variable name", value=editing_srv.get("var_name", ""))
+    srv_info["callback"] = st.text_input("Service handler method name", value=editing_srv.get("callback", ""))
+        
+    st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
+    
+    if st.button("Submit"):
+        st.session_state['gen'].update_service(srv_info, index)
+        st.rerun()
+    
 with st.sidebar:
     
     # TODO: Remove button later
@@ -263,7 +309,7 @@ with st.expander("Node structure", expanded=True):
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}}
+    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}}
         
     text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
     for sub in st.session_state['gen']["subscribers"]:
@@ -285,12 +331,18 @@ with st.expander("Node structure", expanded=True):
         var_name = par["name"]
         checkboxes['params'][var_name] = checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var))
     
+    text_with_button("👂 Service servers:", "➕", help="Add service server", on_click=lambda: add_service())
+    for srv in st.session_state['gen']["services"]:
+        var_name = srv["var_name"]
+        checkboxes['srv'][var_name] = checkboxes_with_button(f'`{srv["var_name"]}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=srv["var_name"], on_click=lambda var=var_name: edit_service(var))
+    
     # Remove selected items
     if st.button("Remove selected items 🗑️", type="primary"):
         st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
         st.session_state['gen'].remove_subscriptions([k for k, v in checkboxes['sub'].items() if v])
         st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
         st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
+        st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
         st.rerun()
     
     # Visualize node's graph
@@ -366,4 +418,4 @@ for fname, fcontent in files.items():
     index += 1
 
 # For debug
-# st.write(st.session_state["node_info"])
+# st.write(st.session_state['gen'].config)

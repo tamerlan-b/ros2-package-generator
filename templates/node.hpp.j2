@@ -40,10 +40,10 @@ private:
     void {{ tim.callback }}();
     {% endfor %}
     {% for srv in services %}
-    rclcpp::Service<{{ srv.srv_type }}>::SharedPtr {{ srv.var_name }};
-    void {{ srv.callback_name }}(
-        const std::shared_ptr<{{ srv.srv_type }}::Request> request, 
-        std::shared_ptr<{{ srv.srv_type }}::Response> response);
+    rclcpp::Service<{{ srv.type }}>::SharedPtr {{ srv.var_name }};
+    void {{ srv.callback }}(
+        const std::shared_ptr<{{ srv.type }}::Request> request, 
+        std::shared_ptr<{{ srv.type }}::Response> response);
     {% endfor %}
 };
 
