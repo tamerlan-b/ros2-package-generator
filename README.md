@@ -21,7 +21,7 @@ Automatic generation of all template constructs. No more manual writing of:
 Support for all major ROS2 node elements:
 - [x] **📤 Publishers** (with QoS, topic, message type configuration)
 - [x] **📥 Subscribers** (with auto-generated callback functions)
-- [ ] **🔧 Services** (servers and clients)
+- [x] **🔧 Services** (servers and clients)
 - [x] **⏱️ Timers** (periodic callbacks)
 - [x] **⚙️ Parameters** (declaration and initialization)
 - [ ] **🎯 Actions** (action servers)
@@ -90,7 +90,7 @@ streamlit run ros2_package_generator.py
 - [ ] Add support for:
   - [x] ros2-params
   - [x] ros2-timers
-  - [ ] ros2-service
+  - [x] ros2-service
   - [ ] ros2-actions
   - [ ] message_filters
 - [ ] Support newer ROS2 distros (humble, iron, jazzy)

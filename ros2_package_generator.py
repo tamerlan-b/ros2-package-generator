@@ -289,10 +289,10 @@ with st.sidebar:
         st.session_state["gen"]["cmake_target_name"] = "my_library"
         st.session_state["gen"].add_publisher({"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
         st.session_state["gen"].add_subscription({"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "sptr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
-        st.session_state["gen"].add_subscription({"msg_type": "geometry_msgs::msg::PoseStamped", "var_name": "pose_sub", "callback": "pose_callback", "callback_arg_type": "sptr", "topic": "/initial_pose", "qos": {"is_default": True, "queue_size": 4}})
         st.session_state["gen"].add_timer({"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},)
         st.session_state["gen"].add_param({"name": "buffer_size", "type": "int", "default": "10"})
-        st.session_state["gen"].add_param({"name": "path_to_onnx", "type": "std::string", "default": "\"\""})
+        st.session_state["gen"].add_service({"name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "service", "callback": "service_callback"})
+        st.session_state["gen"].add_client({"srv_name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "client"})
 
     # TODO: Support newer ROS2 distros
     st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy"])
@@ -330,6 +330,7 @@ def draw_node() -> Digraph:
                 style='filled', fillcolor='lightgreen')
         dot.edge('NODE', f'OUT_{i}', label='')
 
+    # TODO: add visualization for services
     return dot
 
 with st.expander("Node structure", expanded=True):
