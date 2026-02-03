@@ -87,6 +87,14 @@ namespace {{ node_ns }}
       [this](const std::shared_ptr<{{ srv.type }}::Request> request, std::shared_ptr<{{ srv.type }}::Response> response){ this->{{ srv.callback }}(std::move(request), std::move(response)); }
     );
     {% endfor %}
+    
+    {% if clients %}
+    // Clients
+    {% endif %}
+    {% for client in clients %}
+    this->{{ client.var_name }} = this->create_client<{{ client.type }}>("{{ client.srv_name }}");
+    {% endfor %}
+    // TODO: add waiting for services
 }
 
 {% for sub in subscribers %}

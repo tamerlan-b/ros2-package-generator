@@ -140,7 +140,7 @@ def add_timer():
 @st.dialog("Add Service server")
 def add_service():
     srv_info = {}
-    srv_info["name"] = st.text_input("Service name")        
+    srv_info["name"] = st.text_input("Service name")
     tags = st_tags(
         label='Type',
         text='Press Enter to add',
@@ -152,11 +152,28 @@ def add_service():
     srv_info["type"] = None if len(tags) == 0 else tags[0]
     srv_info["var_name"] = st.text_input("Variable name", placeholder="service")
     srv_info["callback"] = st.text_input("Service handler method name", placeholder="add_two_ints")
-        
     st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
     
     if st.button("Submit"):
         st.session_state['gen'].add_service(srv_info)
+        st.rerun()
+
+@st.dialog("Add Service client")
+def add_client():
+    client_info = {}
+    client_info["srv_name"] = st.text_input("Service name")
+    tags = st_tags(
+        label='Type',
+        text='Press Enter to add',
+        value=[],
+        suggestions=st.session_state['autocompletes']['srv'],
+        maxtags=1,
+        key="srvs_tags"
+    )
+    client_info["type"] = None if len(tags) == 0 else tags[0]
+    client_info["var_name"] = st.text_input("Variable name", placeholder="client")
+    if st.button("Submit"):
+        st.session_state['gen'].add_client(client_info)
         st.rerun()
 
 @st.dialog("Edit Publisher")
@@ -220,7 +237,6 @@ def edit_service(srv_var_name):
     tags = st_tags(
         label='Type',
         text='Press Enter to add',
-        # value=[],
         value=[] if 'type' not in editing_srv else [editing_srv["type"]],
         suggestions=st.session_state['autocompletes']['srv'],
         maxtags=1,
@@ -235,7 +251,26 @@ def edit_service(srv_var_name):
     if st.button("Submit"):
         st.session_state['gen'].update_service(srv_info, index)
         st.rerun()
-    
+
+@st.dialog("Edit Service client")
+def edit_client(client_var_name):
+    editing_client, index = st.session_state['gen'].get_client(client_var_name)
+    client_info = {}
+    client_info["srv_name"] = st.text_input("Service name", value=editing_client.get("srv_name", ""))
+    tags = st_tags(
+        label='Type',
+        text='Press Enter to add',
+        value=[] if 'type' not in editing_client else [editing_client["type"]],
+        suggestions=st.session_state['autocompletes']['srv'],
+        maxtags=1,
+        key="srvs_tags"
+    )
+    client_info["type"] = None if len(tags) == 0 else tags[0]
+    client_info["var_name"] = st.text_input("Variable name", value=editing_client.get("var_name", ""))
+    if st.button("Submit"):
+        st.session_state['gen'].update_client(client_info, index)
+        st.rerun()
+
 with st.sidebar:
     
     # TODO: Remove button later
@@ -309,7 +344,7 @@ with st.expander("Node structure", expanded=True):
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}}
+    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}}
         
     text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
     for sub in st.session_state['gen']["subscribers"]:
@@ -336,6 +371,11 @@ with st.expander("Node structure", expanded=True):
         var_name = srv["var_name"]
         checkboxes['srv'][var_name] = checkboxes_with_button(f'`{srv["var_name"]}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=srv["var_name"], on_click=lambda var=var_name: edit_service(var))
     
+    text_with_button("🗣️ Service clients:", "➕", help="Add service client", on_click=lambda: add_client())
+    for client in st.session_state['gen']["clients"]:
+        var_name = client["var_name"]
+        checkboxes['client'][var_name] = checkboxes_with_button(f'`{client["var_name"]}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=client["var_name"], on_click=lambda var=var_name: edit_client(var))
+    
     # Remove selected items
     if st.button("Remove selected items 🗑️", type="primary"):
         st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
@@ -343,6 +383,7 @@ with st.expander("Node structure", expanded=True):
         st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
         st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
         st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
+        st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
         st.rerun()
     
     # Visualize node's graph

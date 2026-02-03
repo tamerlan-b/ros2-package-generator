@@ -45,6 +45,9 @@ private:
         const std::shared_ptr<{{ srv.type }}::Request> request, 
         std::shared_ptr<{{ srv.type }}::Response> response);
     {% endfor %}
+    {% for client in clients %}
+    rclcpp::Client<{{ client.type }}>::SharedPtr {{ client.var_name }};
+    {% endfor %}
 };
 
 {% if node_ns %}
