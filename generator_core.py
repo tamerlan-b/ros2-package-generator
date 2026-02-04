@@ -71,6 +71,7 @@ class Ros2PkgGenerator:
         
         if config != {}:
             self.config = config
+            # TODO: add items correctly (with add methods)
         else:
             self.config = {
                 "node_filename": "node",
@@ -172,6 +173,11 @@ class Ros2PkgGenerator:
         index = next(iter([i for i, item in enumerate(self.config[dict_name]) if item["var_name"] == var_name]), -1)
         return (None if index < 0 else self.config[dict_name][index], index)
     
+    def update_item(self, item_info: Dict, index: int, dict_name: str, add_method = None):
+        if index >= 0 and index < len(self.config[dict_name]):
+            del self.config[dict_name][index]
+            add_method(item_info)
+    
     # Subscriptions
     
     def add_subscription(self, sub_info: Dict):
@@ -197,9 +203,7 @@ class Ros2PkgGenerator:
         return self.get_item(sub_var_name, "subscribers")
     
     def update_subscription(self, sub_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["subscribers"]):
-            del self.config["subscribers"][index]
-            self.add_subscription(sub_info)
+        self.update_item(sub_info, index, "subscribers", self.add_subscription)
     
     # Publishers
     
@@ -226,9 +230,7 @@ class Ros2PkgGenerator:
         return self.get_item(pub_var_name, "publishers")
     
     def update_publisher(self, pub_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["publishers"]):
-            del self.config["publishers"][index]
-            self.add_publisher(pub_info)
+        self.update_item(pub_info, index, "publishers", self.add_publisher)
     
     # Timers
     
@@ -249,9 +251,7 @@ class Ros2PkgGenerator:
         return self.get_item(timer_var_name, "timers")
     
     def update_timer(self, timer_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["timers"]):
-            del self.config["timers"][index]
-            self.add_timer(timer_info)
+        self.update_item(timer_info, index, "timers", self.add_timer)
     
     # Params
     
@@ -275,9 +275,7 @@ class Ros2PkgGenerator:
         return (None if index < 0 else self.config["params"][index], index)
     
     def update_param(self, param_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["params"]):
-            del self.config["params"][index]
-            self.add_param(param_info)
+        self.update_item(param_info, index, "params", self.add_param)
     
     # Service servers
     
@@ -304,9 +302,7 @@ class Ros2PkgGenerator:
         return self.get_item(srv_var_name, "services")
 
     def update_service(self, srv_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["services"]):
-            del self.config["services"][index]
-            self.add_service(srv_info)
+        self.update_item(srv_info, index, "services", self.add_service)
     
     # Service clients
     
@@ -333,9 +329,7 @@ class Ros2PkgGenerator:
         return self.get_item(client_var_name, "clients")
 
     def update_client(self, client_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["clients"]):
-            del self.config["clients"][index]
-            self.add_client(client_info)
+        self.update_item(client_info, index, "clients", self.add_client)
     
     # Action servers
     
@@ -361,9 +355,7 @@ class Ros2PkgGenerator:
         return self.get_item(action_srv_var_name, "action_servers")
     
     def update_action_server(self, action_srv_info: Dict, index: int):
-        if index >= 0 and index < len(self.config["action_servers"]):
-            del self.config["action_servers"][index]
-            self.add_action_server(action_srv_info)
+        self.update_item(action_srv_info, index, "action_servers", self.add_action_server)
     
     def generate_files(self):
         self.__update_includes()
