@@ -85,6 +85,8 @@ class Ros2PkgGenerator:
                 'timers': [],
                 'services': [],
                 'clients': [],
+                'action_servers': [],
+                'action_clients': [],
                 "package_name": "my_package",
                 "cmake_target_name": "my_library"
             }
@@ -127,9 +129,40 @@ class Ros2PkgGenerator:
         # TODO: add checks for parameters
         return name_busy
     
+    def __update_includes(self):
+        deps = set()
+        includes = set()
+        
+        for s in self.config["subscribers"]:
+            deps.update(s["depends"])
+            includes.update(s["includes"])
+        
+        for p in self.config["publishers"]:
+            deps.update(p["depends"])
+            includes.update(p["includes"])
+        
+        for s in self.config["services"]:
+            deps.update(s["depends"])
+            includes.update(s["includes"])
+        
+        for c in self.config["clients"]:
+            deps.update(c["depends"])
+            includes.update(c["includes"])
+        
+        for action_srv in self.config["action_servers"]:
+            deps.update(action_srv["depends"])
+            includes.update(action_srv["includes"])
+        
+        if len(self.config["action_servers"]) > 0:
+            deps.add("rclcpp_action")
+            includes.add("rclcpp_action/rclcpp_action.hpp")
+
+        self.config['include_pkgs'] = deps
+        self.config['includes'] = includes
+    
     # Subscriptions
     
-    def add_subscription(self, sub_info):
+    def add_subscription(self, sub_info: Dict):
         if not has_keys(sub_info, ["msg_type", "var_name", "topic", "callback", "callback_arg_type", "qos"]):
             return
         if self.is_name_busy(sub_info["var_name"]):
@@ -150,7 +183,7 @@ class Ros2PkgGenerator:
     def remove_subscriptions(self, sub_var_names: List[str]):
         self.config["subscribers"] = [s for s in self.config["subscribers"] if s["var_name"] not in sub_var_names]
     
-    def get_subscription(self, sub_var_name) -> Tuple[dict, int]:
+    def get_subscription(self, sub_var_name: str) -> Tuple[dict, int]:
         index = next(iter([i for i, s in enumerate(self.config["subscribers"]) if s["var_name"] == sub_var_name]), -1)
         return (None if index < 0 else self.config["subscribers"][index], index)
     
@@ -161,7 +194,7 @@ class Ros2PkgGenerator:
     
     # Publishers
     
-    def add_publisher(self, pub_info):
+    def add_publisher(self, pub_info: Dict):
         if not has_keys(pub_info, ["msg_type", "var_name", "topic", "qos"]):
             return
         if self.is_name_busy(pub_info["var_name"]):
@@ -182,7 +215,7 @@ class Ros2PkgGenerator:
     def remove_publishers(self, pub_var_names: List[str]):
         self.config["publishers"] = [p for p in self.config["publishers"] if p["var_name"] not in pub_var_names]
     
-    def get_publisher(self, pub_var_name) -> Tuple[dict, int]:
+    def get_publisher(self, pub_var_name: str) -> Tuple[dict, int]:
         index = next(iter([i for i, p in enumerate(self.config["publishers"]) if p["var_name"] == pub_var_name]), -1)
         return (None if index < 0 else self.config["publishers"][index], index)
     
@@ -193,7 +226,7 @@ class Ros2PkgGenerator:
     
     # Timers
     
-    def add_timer(self, timer_info):
+    def add_timer(self, timer_info: Dict):
         if not has_keys(timer_info, ["var_name", "period", "callback"]):
             return
         if self.is_name_busy(timer_info["var_name"]):
@@ -208,7 +241,7 @@ class Ros2PkgGenerator:
     def remove_timers(self, timer_var_names: List[str]):
         self.config["timers"] = [t for t in self.config["timers"] if t["var_name"] not in timer_var_names]
     
-    def get_timer(self, timer_var_name) -> Tuple[dict, int]:
+    def get_timer(self, timer_var_name: str) -> Tuple[dict, int]:
         index = next(iter([i for i, t in enumerate(self.config["timers"]) if t["var_name"] == timer_var_name]), -1)
         return (None if index < 0 else self.config["timers"][index], index)
     
@@ -219,7 +252,7 @@ class Ros2PkgGenerator:
     
     # Params
     
-    def add_param(self, param_info):
+    def add_param(self, param_info: Dict):
         if not has_keys(param_info, ["name", "type", "default"]):
             return
         if any(p["name"] == param_info["name"] for p in self.config["params"]):
@@ -234,7 +267,7 @@ class Ros2PkgGenerator:
     def remove_params(self, param_names: List[str]):
         self.config["params"] = [p for p in self.config["params"] if p["name"] not in param_names]
     
-    def get_param(self, param_var_name) -> Tuple[dict, int]:
+    def get_param(self, param_var_name: str) -> Tuple[dict, int]:
         index = next(iter([i for i, p in enumerate(self.config["params"]) if p["var_name"] == param_var_name]), -1)
         return (None if index < 0 else self.config["params"][index], index)
     
@@ -245,7 +278,7 @@ class Ros2PkgGenerator:
     
     # Service servers
     
-    def add_service(self, srv_info):
+    def add_service(self, srv_info: Dict):
         if not has_keys(srv_info, ["type", "var_name", "name", "callback"]):
             return
         if self.is_name_busy(srv_info["var_name"]):
@@ -266,7 +299,7 @@ class Ros2PkgGenerator:
     def remove_services(self, srv_var_names: List[str]):
         self.config["services"] = [s for s in self.config["services"] if s["var_name"] not in srv_var_names]
 
-    def get_service(self, srv_var_name) -> Tuple[dict, int]:
+    def get_service(self, srv_var_name: str) -> Tuple[dict, int]:
         index = next(iter([i for i, s in enumerate(self.config["services"]) if s["var_name"] == srv_var_name]), -1)
         return (None if index < 0 else self.config["services"][index], index)
 
@@ -277,7 +310,7 @@ class Ros2PkgGenerator:
     
     # Service clients
     
-    def add_client(self, client_info):
+    def add_client(self, client_info: Dict):
         if not has_keys(client_info, ["type", "var_name", "srv_name"]):
             return
         if self.is_name_busy(client_info["var_name"]):
@@ -298,7 +331,7 @@ class Ros2PkgGenerator:
     def remove_clients(self, client_var_names: List[str]):
         self.config["clients"] = [c for c in self.config["clients"] if c["var_name"] not in client_var_names]
 
-    def get_client(self, client_var_name) -> Tuple[dict, int]:
+    def get_client(self, client_var_name: str) -> Tuple[dict, int]:
         index = next(iter([i for i, c in enumerate(self.config["clients"]) if c["var_name"] == client_var_name]), -1)
         return (None if index < 0 else self.config["clients"][index], index)
 
@@ -307,20 +340,20 @@ class Ros2PkgGenerator:
             del self.config["clients"][index]
             self.add_client(client_info)
     
-    def __update_includes(self):
-        deps = set()
-        includes = set()
+    # Action servers
+    
+    def add_action_server(self, action_srv_info: Dict):
+        if not has_keys(action_srv_info, ["name", "var_name", "type", "handle_goal", "handle_cancel", "handle_accepted", "execute"]):
+            return
+        if self.is_name_busy(action_srv_info["var_name"]):
+            return
+        action_srv_type_snake, action_srv_pkg = convert_ros_format_generic(action_srv_info["type"])
+        action_srv_include = f"{action_srv_type_snake}.hpp"
+        action_srv_info["depends"] = [action_srv_pkg]
+        action_srv_info["includes"] = [action_srv_include]
         
-        for s in self.config["subscribers"]:
-            deps.update(s["depends"])
-            includes.update(s["includes"])
-        
-        for p in self.config["publishers"]:
-            deps.update(p["depends"])
-            includes.update(p["includes"])
-        
-        for s in self.config["services"]:
-            deps.update(s["depends"])
+        self.config["action_servers"].append(action_srv_info)
+
             includes.update(s["includes"])
         
         for c in self.config["clients"]:
