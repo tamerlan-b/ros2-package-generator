@@ -24,7 +24,7 @@ Support for all major ROS2 node elements:
 - [x] **🔧 Services** (servers and clients)
 - [x] **⏱️ Timers** (periodic callbacks)
 - [x] **⚙️ Parameters** (declaration and initialization)
-- [ ] **🎯 Actions** (action servers)
+- [x] **🎯 Actions** (action servers)
 
 ##### 🎨 **Visual Constructor**
 Intuitive interface for:
@@ -91,7 +91,7 @@ streamlit run ros2_package_generator.py
   - [x] ros2-params
   - [x] ros2-timers
   - [x] ros2-service
-  - [ ] ros2-actions
+  - [x] ros2-actions
   - [ ] message_filters
 - [ ] Support newer ROS2 distros (humble, iron, jazzy)
 - [x] Add download button for generated files
