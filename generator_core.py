@@ -160,6 +160,18 @@ class Ros2PkgGenerator:
         self.config['include_pkgs'] = deps
         self.config['includes'] = includes
     
+    def remove_item(self, var_name: str, dict_name: str):
+        index = next([i for i, item in enumerate(self.config[dict_name]) if item["var_name"] == var_name], -1)
+        if index >= 0:
+            del self.config[dict_name][index]
+    
+    def remove_items(self, var_name: List[str], dict_name: str):
+        self.config[dict_name] = [item for item in self.config[dict_name] if item["var_name"] not in var_name]
+    
+    def get_item(self, var_name: str, dict_name: str):
+        index = next(iter([i for i, item in enumerate(self.config[dict_name]) if item["var_name"] == var_name]), -1)
+        return (None if index < 0 else self.config[dict_name][index], index)
+    
     # Subscriptions
     
     def add_subscription(self, sub_info: Dict):
@@ -176,16 +188,13 @@ class Ros2PkgGenerator:
         self.config["subscribers"].append(sub_info)
     
     def remove_subscription(self, sub_var_name: str):
-        index = next([i for i, s in enumerate(self.config["subscribers"]) if s["var_name"] == sub_var_name], -1)
-        if index >= 0:
-            del self.config["subscribers"][index]
+        self.remove_item(sub_var_name, "subscribers")
     
     def remove_subscriptions(self, sub_var_names: List[str]):
-        self.config["subscribers"] = [s for s in self.config["subscribers"] if s["var_name"] not in sub_var_names]
+        self.remove_items(sub_var_names, "subscribers")
     
     def get_subscription(self, sub_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, s in enumerate(self.config["subscribers"]) if s["var_name"] == sub_var_name]), -1)
-        return (None if index < 0 else self.config["subscribers"][index], index)
+        return self.get_item(sub_var_name, "subscribers")
     
     def update_subscription(self, sub_info: Dict, index: int):
         if index >= 0 and index < len(self.config["subscribers"]):
@@ -208,16 +217,13 @@ class Ros2PkgGenerator:
         self.config["publishers"].append(pub_info)
     
     def remove_publisher(self, pub_var_name: str):
-        index = next([i for i, p in enumerate(self.config["publishers"]) if p["var_name"] == pub_var_name], -1)
-        if index >= 0:
-            del self.config["publishers"][index]
+        self.remove_item(pub_var_name, "publishers")
     
     def remove_publishers(self, pub_var_names: List[str]):
-        self.config["publishers"] = [p for p in self.config["publishers"] if p["var_name"] not in pub_var_names]
+        self.remove_items(pub_var_names, "publishers")
     
     def get_publisher(self, pub_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, p in enumerate(self.config["publishers"]) if p["var_name"] == pub_var_name]), -1)
-        return (None if index < 0 else self.config["publishers"][index], index)
+        return self.get_item(pub_var_name, "publishers")
     
     def update_publisher(self, pub_info: Dict, index: int):
         if index >= 0 and index < len(self.config["publishers"]):
@@ -234,16 +240,13 @@ class Ros2PkgGenerator:
         self.config["timers"].append(timer_info)
     
     def remove_timer(self, timer_var_name: str):
-        index = next([i for i, t in enumerate(self.config["timers"]) if t["var_name"] == timer_var_name], -1)
-        if index >= 0:
-            del self.config["timers"][index]
+        self.remove_item(timer_var_name, "timers")
     
     def remove_timers(self, timer_var_names: List[str]):
-        self.config["timers"] = [t for t in self.config["timers"] if t["var_name"] not in timer_var_names]
+        self.remove_items(timer_var_names, "timers")
     
     def get_timer(self, timer_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, t in enumerate(self.config["timers"]) if t["var_name"] == timer_var_name]), -1)
-        return (None if index < 0 else self.config["timers"][index], index)
+        return self.get_item(timer_var_name, "timers")
     
     def update_timer(self, timer_info: Dict, index: int):
         if index >= 0 and index < len(self.config["timers"]):
@@ -267,8 +270,8 @@ class Ros2PkgGenerator:
     def remove_params(self, param_names: List[str]):
         self.config["params"] = [p for p in self.config["params"] if p["name"] not in param_names]
     
-    def get_param(self, param_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, p in enumerate(self.config["params"]) if p["var_name"] == param_var_name]), -1)
+    def get_param(self, param_name: str) -> Tuple[dict, int]:
+        index = next(iter([i for i, p in enumerate(self.config["params"]) if p["name"] == param_name]), -1)
         return (None if index < 0 else self.config["params"][index], index)
     
     def update_param(self, param_info: Dict, index: int):
@@ -292,16 +295,13 @@ class Ros2PkgGenerator:
         self.config["services"].append(srv_info)
     
     def remove_service(self, srv_var_name: str):
-        index = next([i for i, s in enumerate(self.config["services"]) if s["var_name"] == srv_var_name], -1)
-        if index >= 0:
-            del self.config["services"][index]
+        self.remove_item(srv_var_name, "services")
 
     def remove_services(self, srv_var_names: List[str]):
-        self.config["services"] = [s for s in self.config["services"] if s["var_name"] not in srv_var_names]
+        self.remove_items(srv_var_names, "services")
 
     def get_service(self, srv_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, s in enumerate(self.config["services"]) if s["var_name"] == srv_var_name]), -1)
-        return (None if index < 0 else self.config["services"][index], index)
+        return self.get_item(srv_var_name, "services")
 
     def update_service(self, srv_info: Dict, index: int):
         if index >= 0 and index < len(self.config["services"]):
@@ -324,16 +324,13 @@ class Ros2PkgGenerator:
         self.config["clients"].append(client_info)
     
     def remove_client(self, client_var_name: str):
-        index = next([i for i, c in enumerate(self.config["clients"]) if c["var_name"] == client_var_name], -1)
-        if index >= 0:
-            del self.config["clients"][index]
+        self.remove_item(client_var_name, "clients")
 
     def remove_clients(self, client_var_names: List[str]):
-        self.config["clients"] = [c for c in self.config["clients"] if c["var_name"] not in client_var_names]
+        self.remove_items(client_var_names, "clients")
 
     def get_client(self, client_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, c in enumerate(self.config["clients"]) if c["var_name"] == client_var_name]), -1)
-        return (None if index < 0 else self.config["clients"][index], index)
+        return self.get_item(client_var_name, "clients")
 
     def update_client(self, client_info: Dict, index: int):
         if index >= 0 and index < len(self.config["clients"]):
@@ -355,16 +352,13 @@ class Ros2PkgGenerator:
         self.config["action_servers"].append(action_srv_info)
 
     def remove_action_server(self, action_srv_var_name: str):
-        index = next([i for i, action_srv in enumerate(self.config["action_servers"]) if action_srv["var_name"] == action_srv_var_name], -1)
-        if index >= 0:
-            del self.config["action_servers"][index]
+        self.remove_item(action_srv_var_name, "action_servers")
 
     def remove_action_servers(self, action_srv_var_names: List[str]):
-        self.config["action_servers"] = [action_srv for action_srv in self.config["action_servers"] if action_srv["var_name"] not in action_srv_var_names]
+        self.remove_items(action_srv_var_names, "action_servers")
         
     def get_action_server(self, action_srv_var_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, action_srv in enumerate(self.config["action_servers"]) if action_srv["var_name"] == action_srv_var_name]), -1)
-        return (None if index < 0 else self.config["action_servers"][index], index)
+        return self.get_item(action_srv_var_name, "action_servers")
     
     def update_action_server(self, action_srv_info: Dict, index: int):
         if index >= 0 and index < len(self.config["action_servers"]):
