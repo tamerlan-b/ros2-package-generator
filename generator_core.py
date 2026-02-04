@@ -354,14 +354,22 @@ class Ros2PkgGenerator:
         
         self.config["action_servers"].append(action_srv_info)
 
-            includes.update(s["includes"])
-        
-        for c in self.config["clients"]:
-            deps.update(c["depends"])
-            includes.update(c["includes"])
+    def remove_action_server(self, action_srv_var_name: str):
+        index = next([i for i, action_srv in enumerate(self.config["action_servers"]) if action_srv["var_name"] == action_srv_var_name], -1)
+        if index >= 0:
+            del self.config["action_servers"][index]
 
-        self.config['include_pkgs'] = deps
-        self.config['includes'] = includes
+    def remove_action_servers(self, action_srv_var_names: List[str]):
+        self.config["action_servers"] = [action_srv for action_srv in self.config["action_servers"] if action_srv["var_name"] not in action_srv_var_names]
+        
+    def get_action_server(self, action_srv_var_name: str) -> Tuple[dict, int]:
+        index = next(iter([i for i, action_srv in enumerate(self.config["action_servers"]) if action_srv["var_name"] == action_srv_var_name]), -1)
+        return (None if index < 0 else self.config["action_servers"][index], index)
+    
+    def update_action_server(self, action_srv_info: Dict, index: int):
+        if index >= 0 and index < len(self.config["action_servers"]):
+            del self.config["action_servers"][index]
+            self.add_action_server(action_srv_info)
     
     def generate_files(self):
         self.__update_includes()

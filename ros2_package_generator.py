@@ -176,6 +176,30 @@ def add_client():
         st.session_state['gen'].add_client(client_info)
         st.rerun()
 
+@st.dialog("Add Action server")
+def add_action_server():
+    action_srv_info = {}
+    action_srv_info["name"] = st.text_input("Action name")
+    tags = st_tags(
+        label='Type',
+        text='Press Enter to add',
+        value=[],
+        suggestions=st.session_state['autocompletes']['action'],
+        maxtags=1,
+        key="actions_tags"
+    )
+    action_srv_info["type"] = None if len(tags) == 0 else tags[0]
+    action_srv_info["var_name"] = st.text_input("Variable name", placeholder="action_server")
+    
+    action_srv_info["handle_goal"] = st.text_input("Goal handle method name", placeholder="handle_goal")
+    action_srv_info["handle_cancel"] = st.text_input("Goal cancel handle method name", placeholder="handle_cancel")
+    action_srv_info["handle_accepted"] = st.text_input("Goal accept handle method name", placeholder="handle_accepted")
+    action_srv_info["execute"] = st.text_input("Goal execute method name", placeholder="execute")
+    
+    if st.button("Submit"):
+        st.session_state['gen'].add_action_server(action_srv_info)
+        st.rerun()
+
 @st.dialog("Edit Publisher")
 def edit_publisher(pub_var_name):
     editing_pub, index = st.session_state['gen'].get_publisher(pub_var_name)
@@ -271,6 +295,32 @@ def edit_client(client_var_name):
         st.session_state['gen'].update_client(client_info, index)
         st.rerun()
 
+@st.dialog("Edit Action server")
+def edit_action_server(action_srv_var_name):
+    editing_action_srv, index = st.session_state['gen'].get_action_server(action_srv_var_name)
+    action_srv_info = {}
+    action_srv_info["name"] = st.text_input("Action name", value=editing_action_srv.get("name", ""))
+    tags = st_tags(
+        label='Type',
+        text='Press Enter to add',
+        # value=[],
+        value=[] if 'type' not in editing_action_srv else [editing_action_srv["type"]],
+        suggestions=st.session_state['autocompletes']['action'],
+        maxtags=1,
+        key="actions_tags"
+    )
+    action_srv_info["type"] = None if len(tags) == 0 else tags[0]
+    action_srv_info["var_name"] = st.text_input("Variable name", placeholder="action_server", value=editing_action_srv.get("var_name", ""))
+    
+    action_srv_info["handle_goal"] = st.text_input("Goal handle method name", value=editing_action_srv.get("handle_goal", ""))
+    action_srv_info["handle_cancel"] = st.text_input("Goal cancel handle method name", value=editing_action_srv.get("handle_cancel", ""))
+    action_srv_info["handle_accepted"] = st.text_input("Goal accept handle method name", value=editing_action_srv.get("handle_accepted", ""))
+    action_srv_info["execute"] = st.text_input("Goal execute method name", value=editing_action_srv.get("execute", ""))
+    
+    if st.button("Submit"):
+        st.session_state['gen'].update_action_server(action_srv_info, index)
+        st.rerun()
+
 with st.sidebar:
     
     # TODO: Remove button later
@@ -293,6 +343,7 @@ with st.sidebar:
         st.session_state["gen"].add_param({"name": "buffer_size", "type": "int", "default": "10"})
         st.session_state["gen"].add_service({"name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "service", "callback": "service_callback"})
         st.session_state["gen"].add_client({"srv_name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "client"})
+        st.session_state["gen"].add_action_server({"name": "fibonacci", "var_name": "action_server_", "type": "tf2_msgs::action::LookupTransform", "handle_goal": "handle_goal", "handle_cancel": "handle_cancel", "handle_accepted": "handle_accepted", "execute": "execute"})
 
     # TODO: Support newer ROS2 distros
     st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy"])
@@ -345,7 +396,7 @@ with st.expander("Node structure", expanded=True):
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}}
+    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}}
         
     text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
     for sub in st.session_state['gen']["subscribers"]:
@@ -377,6 +428,11 @@ with st.expander("Node structure", expanded=True):
         var_name = client["var_name"]
         checkboxes['client'][var_name] = checkboxes_with_button(f'`{client["var_name"]}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=client["var_name"], on_click=lambda var=var_name: edit_client(var))
     
+    text_with_button("? Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
+    for action_srv in st.session_state['gen']["action_servers"]:
+        var_name = action_srv["var_name"]
+        checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{action_srv["var_name"]}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=action_srv["var_name"], on_click=lambda var=var_name: edit_action_server(var))
+    
     # Remove selected items
     if st.button("Remove selected items 🗑️", type="primary"):
         st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
@@ -385,6 +441,7 @@ with st.expander("Node structure", expanded=True):
         st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
         st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
         st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
+        st.session_state['gen'].remove_action_servers([k for k, v in checkboxes['action_srv'].items() if v])
         st.rerun()
     
     # Visualize node's graph
