@@ -127,6 +127,10 @@ class Ros2PkgGenerator:
             name_busy = name_busy or any(s["var_name"] == var_name for s in self.config["services"])
         if not name_busy:
             name_busy = name_busy or any(c["var_name"] == var_name for c in self.config["clients"])
+        if not name_busy:
+            name_busy = name_busy or any(action_srv["var_name"] == var_name for action_srv in self.config["action_servers"])
+        if not name_busy:
+            name_busy = name_busy or any(action_client["var_name"] == var_name for action_client in self.config["action_clients"])
         # TODO: add checks for parameters
         return name_busy
     
@@ -154,7 +158,11 @@ class Ros2PkgGenerator:
             deps.update(action_srv["depends"])
             includes.update(action_srv["includes"])
         
-        if len(self.config["action_servers"]) > 0:
+        for action_client in self.config["action_clients"]:
+            deps.update(action_client["depends"])
+            includes.update(action_client["includes"])
+        
+        if len(self.config["action_servers"]) + len(self.config["action_clients"]) > 0:
             deps.add("rclcpp_action")
             includes.add("rclcpp_action/rclcpp_action.hpp")
 
@@ -356,6 +364,32 @@ class Ros2PkgGenerator:
     
     def update_action_server(self, action_srv_info: Dict, index: int):
         self.update_item(action_srv_info, index, "action_servers", self.add_action_server)
+    
+    # Action clients
+    
+    def add_action_client(self, action_client_info: Dict):
+        if not has_keys(action_client_info, ["srv_name", "var_name", "type", "goal_response_callback", "feedback_callback", "result_callback"]):
+            return
+        if self.is_name_busy(action_client_info["var_name"]):
+            return
+        action_client_type_snake, action_client_pkg = convert_ros_format_generic(action_client_info["type"])
+        action_client_include = f"{action_client_type_snake}.hpp"
+        action_client_info["depends"] = [action_client_pkg]
+        action_client_info["includes"] = [action_client_include]
+        
+        self.config["action_clients"].append(action_client_info)
+
+    def remove_action_client(self, action_client_var_name: str):
+        self.remove_item(action_client_var_name, "action_clients")
+
+    def remove_action_clients(self, action_client_var_names: List[str]):
+        self.remove_items(action_client_var_names, "action_clients")
+        
+    def get_action_client(self, action_client_var_name: str) -> Tuple[dict, int]:
+        return self.get_item(action_client_var_name, "action_clients")
+    
+    def update_action_client(self, action_client_info: Dict, index: int):
+        self.update_item(action_client_info, index, "action_clients", self.add_action_client)
     
     def generate_files(self):
         self.__update_includes()
