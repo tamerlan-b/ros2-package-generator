@@ -250,7 +250,7 @@ def edit_timer(timer_var_name):
     timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1, value=editing_timer.get("period", ""))
     timer_info["callback"] = st.text_input("Callback function name", value=editing_timer.get("callback", ""))
     if st.button("Submit"):
-        st.session_state['gen'].update_timer(timer_var_name, index)
+        st.session_state['gen'].update_timer(timer_info, index)
         st.rerun()
 
 @st.dialog("Edit Service server")
