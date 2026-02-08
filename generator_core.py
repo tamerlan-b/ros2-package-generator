@@ -119,19 +119,19 @@ class Ros2PkgGenerator:
     
     def is_name_busy(self, var_name: str):
         name_busy = False
-        name_busy = name_busy or any(p["var_name"] == var_name for p in self.config["publishers"])
+        name_busy = name_busy or any(p["var_name"] == var_name for p in self.config.get("publishers", []))
         if not name_busy:
-            name_busy = name_busy or any(s["var_name"] == var_name for s in self.config["subscribers"])
+            name_busy = name_busy or any(s["var_name"] == var_name for s in self.config.get("subscribers", []))
         if not name_busy:
-            name_busy = name_busy or any(t["var_name"] == var_name for t in self.config["timers"])
+            name_busy = name_busy or any(t["var_name"] == var_name for t in self.config.get("timers", []))
         if not name_busy:
-            name_busy = name_busy or any(s["var_name"] == var_name for s in self.config["services"])
+            name_busy = name_busy or any(s["var_name"] == var_name for s in self.config.get("services", []))
         if not name_busy:
-            name_busy = name_busy or any(c["var_name"] == var_name for c in self.config["clients"])
+            name_busy = name_busy or any(c["var_name"] == var_name for c in self.config.get("clients", []))
         if not name_busy:
-            name_busy = name_busy or any(action_srv["var_name"] == var_name for action_srv in self.config["action_servers"])
+            name_busy = name_busy or any(action_srv["var_name"] == var_name for action_srv in self.config.get("action_servers", []))
         if not name_busy:
-            name_busy = name_busy or any(action_client["var_name"] == var_name for action_client in self.config["action_clients"])
+            name_busy = name_busy or any(action_client["var_name"] == var_name for action_client in self.config.get("action_clients", []))
         # TODO: add checks for parameters
         return name_busy
     
@@ -139,46 +139,49 @@ class Ros2PkgGenerator:
         deps = set()
         includes = set()
         
-        for s in self.config["subscribers"]:
+        for s in self.config.get("subscribers", []):
             deps.update(s["depends"])
             includes.update(s["includes"])
         
-        for p in self.config["publishers"]:
+        for p in self.config.get("publishers", []):
             deps.update(p["depends"])
             includes.update(p["includes"])
         
-        for s in self.config["services"]:
+        for s in self.config.get("services", []):
             deps.update(s["depends"])
             includes.update(s["includes"])
         
-        for c in self.config["clients"]:
+        for c in self.config.get("clients", []):
             deps.update(c["depends"])
             includes.update(c["includes"])
         
-        for action_srv in self.config["action_servers"]:
+        action_servers = self.config.get("action_servers", [])
+        for action_srv in action_servers:
             deps.update(action_srv["depends"])
             includes.update(action_srv["includes"])
         
-        for action_client in self.config["action_clients"]:
+        action_clients = self.config.get("action_clients", [])
+        for action_client in action_clients:
             deps.update(action_client["depends"])
             includes.update(action_client["includes"])
         
-        if len(self.config["action_servers"]) + len(self.config["action_clients"]) > 0:
+        if len(action_servers) + len(action_clients) > 0:
             deps.add("rclcpp_action")
             includes.add("rclcpp_action/rclcpp_action.hpp")
         
-        for sync_sub in self.config.get("sync_subscribers", []):
+        sync_subscribers = self.config.get("sync_subscribers", [])
+        for sync_sub in sync_subscribers:
             for s in sync_sub["subs"]:
                 deps.update(s["depends"])
                 includes.update(s["includes"])
             if sync_sub["sync_policy"] == "ExactTime":
-                includes.update(["message_filters/sync_policies/exact_time.h"])
+                includes.add("message_filters/sync_policies/exact_time.h")
             elif sync_sub["sync_policy"] == "ApproximateTime":
-                includes.update(["message_filters/sync_policies/approximate_time.h"])
+                includes.add("message_filters/sync_policies/approximate_time.h")
             elif sync_sub["sync_policy"] == "ApproximateEpsilonTime":
-                includes.update(["message_filters/sync_policies/approximate_epsilon_time.h"])
+                includes.add("message_filters/sync_policies/approximate_epsilon_time.h")
         
-        if len(self.config.get("sync_subscribers", [])) > 0:
+        if len(sync_subscribers) > 0:
             deps.add("message_filters")
             includes.add("message_filters/subscriber.h")
             includes.add("message_filters/synchronizer.h")
