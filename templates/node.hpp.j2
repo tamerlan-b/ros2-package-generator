@@ -68,6 +68,22 @@ private:
         const std::shared_ptr<const {{ action_client.type }}::Feedback> feedback);
     void {{ action_client.result_callback }}(const rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::WrappedResult & result);
     {% endfor %}
+    {% for sync_subs in  sync_subscribers %}
+        {% for sub in  sync_subs.subs %}
+    std::shared_ptr<message_filters::Subscriber<{{ sub.msg_type }}>> {{ sub.var_name }};
+        {% endfor %}
+    using SyncPolicy = message_filters::sync_policies::{{ sync_subs.sync_policy }}<
+        {% for sub in sync_subs.subs %}
+        {{ sub.msg_type }}{% if not loop.last %},{% endif %} 
+        {% endfor %}
+        >;
+    std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> {{ sync_subs.var_name }};
+    void {{ sync_subs.callback }}(
+        {% for i in range(sync_subs.subs|length) %}
+        const {{ sync_subs.subs[i].msg_type }}::ConstSharedPtr& msg_{{ i+1 }}{% if not loop.last %},{% endif %} 
+        {% endfor %}
+    );
+    {% endfor %}
 };
 
 {% if node_ns %}

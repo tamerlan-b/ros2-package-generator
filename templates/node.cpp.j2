@@ -126,6 +126,25 @@ namespace {{ node_ns }}
       std::chrono::milliseconds(500),
       [&](){ this->{{ action_client.var_name }}_once_timer_cb(); });
     {% endfor %}
+    
+    {% if sync_subscribers %}
+    // Synchronized subscribers (message_filters)
+    using namespace std::placeholders;
+    {% endif %}
+    {% for sync_subs in  sync_subscribers %}
+        {% for sub in  sync_subs.subs %}
+    rclcpp::QoS {{ sub.var_name }}_qos(4);
+    this->{{ sub.var_name }} = std::make_shared<message_filters::Subscriber<{{ sub.msg_type }}>>(this, "{{ sub.topic }}", {{ sub.var_name }}_qos.get_rmw_qos_profile());
+        {% endfor %}
+    this->{{ sync_subs.var_name }} = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
+      SyncPolicy({{ sync_subs.queue_size }}), 
+        {% for i in range(sync_subs.subs|length) %}
+        *{{ sync_subs.subs[i].var_name }}{% if not loop.last %},{% endif %} 
+        {% endfor %}
+      );
+    this->{{ sync_subs.var_name }}->registerCallback(
+      std::bind(&{{ node_classname }}::{{ sync_subs.callback }}, this, {% for i in range(sync_subs.subs|length) %}_{{ i+1 }}{% if not loop.last %},{% endif %} {% endfor %}));
+    {% endfor %}
 }
 
 {% for sub in subscribers %}
@@ -257,6 +276,17 @@ void {{ node_classname }}::{{ action_client.result_callback }}(const rclcpp_acti
             RCLCPP_ERROR(this->get_logger(), "Unknown result code");
             return;
     }
+}
+{% endfor %}
+
+{% for sync_subs in  sync_subscribers %}
+void {{ node_classname }}::{{ sync_subs.callback }}(
+  {% for i in range(sync_subs.subs|length) %}
+  const {{ sync_subs.subs[i].msg_type }}::ConstSharedPtr& msg_{{ i+1 }}{% if not loop.last %},{% endif %} 
+  {% endfor %}
+)
+{
+    // TODO: add implementation
 }
 {% endfor %}
 

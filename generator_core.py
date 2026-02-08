@@ -88,6 +88,7 @@ class Ros2PkgGenerator:
                 'clients': [],
                 'action_servers': [],
                 'action_clients': [],
+                'sync_subscribers': [],
                 "package_name": "my_package",
                 "cmake_target_name": "my_library"
             }
@@ -165,6 +166,22 @@ class Ros2PkgGenerator:
         if len(self.config["action_servers"]) + len(self.config["action_clients"]) > 0:
             deps.add("rclcpp_action")
             includes.add("rclcpp_action/rclcpp_action.hpp")
+        
+        for sync_sub in self.config.get("sync_subscribers", []):
+            for s in sync_sub["subs"]:
+                deps.update(s["depends"])
+                includes.update(s["includes"])
+            if sync_sub["sync_policy"] == "ExactTime":
+                includes.update(["message_filters/sync_policies/exact_time.h"])
+            elif sync_sub["sync_policy"] == "ApproximateTime":
+                includes.update(["message_filters/sync_policies/approximate_time.h"])
+            elif sync_sub["sync_policy"] == "ApproximateEpsilonTime":
+                includes.update(["message_filters/sync_policies/approximate_epsilon_time.h"])
+        
+        if len(self.config.get("sync_subscribers", [])) > 0:
+            deps.add("message_filters")
+            includes.add("message_filters/subscriber.h")
+            includes.add("message_filters/synchronizer.h")
 
         self.config['include_pkgs'] = deps
         self.config['includes'] = includes
@@ -390,6 +407,36 @@ class Ros2PkgGenerator:
     
     def update_action_client(self, action_client_info: Dict, index: int):
         self.update_item(action_client_info, index, "action_clients", self.add_action_client)
+    
+    # Synchronized subscriptions (message filters)
+    
+    def add_sync_subscription(self, sync_sub_info: Dict):
+        if not has_keys(sync_sub_info, ["var_name", "callback", "sync_policy", "queue_size", "subs"]):
+            return
+        if self.is_name_busy(sync_sub_info["var_name"]):
+            return
+        
+        for s in sync_sub_info["subs"]:
+            msg_type_snake, msg_pkg = convert_ros_format_generic(s["msg_type"])
+            msg_include = f"{msg_type_snake}.hpp"
+            s["depends"] = [msg_pkg]
+            s["includes"] = [msg_include]
+
+        if "sync_subscribers" not in self.config:
+            self.config["sync_subscribers"] = []
+        self.config["sync_subscribers"].append(sync_sub_info)
+    
+    def remove_sync_subscription(self, sync_sub_var_name: str):
+        self.remove_item(sync_sub_var_name, "sync_subscribers")
+    
+    def remove_sync_subscriptions(self, sync_sub_var_names: List[str]):
+        self.remove_items(sync_sub_var_names, "sync_subscribers")
+    
+    def get_sync_subscription(self, sync_sub_var_name: str) -> Tuple[dict, int]:
+        return self.get_item(sync_sub_var_name, "sync_subscribers")
+    
+    def update_sync_subscription(self, sync_sub_info: Dict, index: int):
+        self.update_item(sync_sub_info, index, "sync_subscribers", self.add_sync_subscription)
     
     def generate_files(self):
         self.__update_includes()
