@@ -1,0 +1,18 @@
+    {% for pub in publishers %}
+      {% if pub.qos.is_default %}
+        {% set qos_expr = '{' ~ pub.qos.queue_size ~ '}' %}
+      {% else %}
+    rclcpp::QoS {{ pub.var_name }}_qos({{ pub.qos.queue_size }});
+        {% if pub.qos.is_keep_all %}
+    {{ pub.var_name }}_qos.keep_all();
+        {% endif %}
+        {% if pub.qos.is_best_effort %}
+    {{ pub.var_name }}_qos.best_effort();
+        {% endif %}
+        {% if pub.qos.is_transient_local %}
+    {{ pub.var_name }}_qos.transient_local();
+        {% endif %}
+        {% set qos_expr = pub.var_name ~ '_qos' %}
+      {% endif %}
+    this->{{ pub.var_name }} = this->create_publisher<{{ pub.msg_type }}>("{{ pub.topic }}", {{ qos_expr }});
+    {% endfor %}

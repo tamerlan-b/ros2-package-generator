@@ -1,0 +1,9 @@
+    {% for action_srv in action_servers %}
+    this->{{ action_srv.var_name }} = rclcpp_action::create_server<{{ action_srv.type }}>(
+        this,
+        "{{ action_srv.name }}",
+        [this](const rclcpp_action::GoalUUID & uuid, std::shared_ptr<const {{ action_srv.type }}::Goal> goal){return this->{{ action_srv.handle_goal }}(std::move(uuid), std::move(goal));},
+        [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<{{ action_srv.type }}>> goal_handle){return this->{{ action_srv.handle_cancel }}(std::move(goal_handle));},
+        [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<{{ action_srv.type }}>> goal_handle){this->{{ action_srv.handle_accepted }}(std::move(goal_handle));}
+    );
+    {% endfor %}

@@ -1,0 +1,10 @@
+    {% for action_client in action_clients %}
+    rclcpp_action::Client<{{ action_client.type }}>::SharedPtr {{ action_client.var_name }};
+    rclcpp::TimerBase::SharedPtr {{ action_client.var_name }}_once_timer;
+    void {{ action_client.var_name }}_once_timer_cb();
+    void {{ action_client.goal_response_callback }}(std::shared_future<rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr> future);
+    void {{ action_client.feedback_callback }}(
+        rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr gh, 
+        const std::shared_ptr<const {{ action_client.type }}::Feedback> feedback);
+    void {{ action_client.result_callback }}(const rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::WrappedResult & result);
+    {% endfor %}
