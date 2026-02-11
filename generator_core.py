@@ -178,7 +178,7 @@ class Ros2PkgGenerator:
                 includes.add("message_filters/sync_policies/exact_time.h")
             elif sync_sub["sync_policy"] == "ApproximateTime":
                 includes.add("message_filters/sync_policies/approximate_time.h")
-            elif sync_sub["sync_policy"] == "ApproximateEpsilonTime":
+            elif sync_sub["sync_policy"] == "ApproximateEpsilonTime":   # TODO: remove for Foxy
                 includes.add("message_filters/sync_policies/approximate_epsilon_time.h")
         
         if len(sync_subscribers) > 0:

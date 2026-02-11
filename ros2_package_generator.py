@@ -40,6 +40,11 @@ if "autocompletes" not in st.session_state:
 if 'gen' not in st.session_state:
     st.session_state['gen'] = Ros2PkgGenerator()
 
+def text_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
+    text_col, btn_col = st.columns([2, 1], vertical_alignment='center')
+    text_col.write(text)
+    return btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
+
 def get_index(value, iterable, default_index=-1):
     for i, item in enumerate(iterable, 0):
         if item == value:
@@ -223,8 +228,50 @@ def add_action_client():
         st.session_state['gen'].add_action_client(action_client_info)
         st.rerun()
 
+@st.dialog("Add synchronized subscriber")
+def __add_sync_sub():
+    num_max_subs = 9
+    sync_sub_info = {}
+    sync_sub_info["var_name"] = st.text_input("Variable name")
+    sync_sub_info["callback"] = st.text_input("Synchronized callback function name")
+    sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"]) #, "ApproximateEpsilonTime"])
+    sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1)
+    # "epsilon": "", # rclcpp::Duration (only for "ApproximateEpsilonTime")
+    
+    with st.form("Add subscription", clear_on_submit=True):
+        st.subheader("Subscription params")
+        sub_info = get_pub_sub_info()
+        with st.expander('QoS settings'):
+            sub_info["qos"] = add_qos()
+        if st.form_submit_button("Add topic"):
+            # TODO: add check for empty fields
+            if len(st.session_state['temp_subs']) < num_max_subs:
+                st.session_state['temp_subs'].append(sub_info)
+            else:
+                st.error("Number of synchronized topics in C++ API cannot exceed 9")
+    
+    def remove_sub(var_name: str):
+        index = next(iter([i for i, s in enumerate(st.session_state['temp_subs']) if s["var_name"] == var_name]), -1)
+        if index >= 0:
+            del st.session_state['temp_subs'][index]
+    
+    for sub in st.session_state['temp_subs']:
+        var_name = sub["var_name"]
+        text_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "🗑️", help="Remove subscriber", on_click=lambda var=var_name: remove_sub(var), btn_key=var_name)
+    
+    if st.button("Submit"):
+        # TODO: add check for fields and num subs
+        sync_sub_info["subs"] = st.session_state['temp_subs'].copy()
+        st.session_state["gen"].add_sync_subscription(sync_sub_info)
+        st.session_state['temp_subs'] = []
+        st.rerun()
+
+def add_sync_sub():
+    st.session_state['temp_subs'] = []
+    __add_sync_sub()
+
 @st.dialog("Edit Publisher")
-def edit_publisher(pub_var_name):
+def edit_publisher(pub_var_name: str):
     editing_pub, index = st.session_state['gen'].get_publisher(pub_var_name)
     pub_info = get_pub_sub_info(editing_pub)
     with st.expander('QoS settings'):
@@ -234,7 +281,7 @@ def edit_publisher(pub_var_name):
         st.rerun()
 
 @st.dialog("Edit Subscriber")
-def edit_subscriber(sub_var_name):
+def edit_subscriber(sub_var_name: str):
     editing_sub, index = st.session_state['gen'].get_subscription(sub_var_name)
     sub_info = get_pub_sub_info(editing_sub)
     
@@ -252,7 +299,7 @@ def edit_subscriber(sub_var_name):
         st.rerun()
 
 @st.dialog("Edit Parameter")
-def edit_parameter(param_name):
+def edit_parameter(param_name: str):
     editing_param, index = st.session_state['gen'].get_param(param_name)
     param_info = {}
     param_info["name"] = st.text_input("Name", value=editing_param.get("name", ""))
@@ -266,7 +313,7 @@ def edit_parameter(param_name):
         st.rerun()
 
 @st.dialog("Edit Timer")
-def edit_timer(timer_var_name):
+def edit_timer(timer_var_name: str):
     editing_timer, index = st.session_state['gen'].get_timer(timer_var_name)
     timer_info = {}
     timer_info["var_name"] = st.text_input("Variable name", value=editing_timer.get("var_name", ""))
@@ -277,7 +324,7 @@ def edit_timer(timer_var_name):
         st.rerun()
 
 @st.dialog("Edit Service server")
-def edit_service(srv_var_name):
+def edit_service(srv_var_name: str):
     editing_srv, index = st.session_state['gen'].get_service(srv_var_name)
     srv_info = {}
     srv_info["name"] = st.text_input("Service name", value=editing_srv.get("name", ""))        
@@ -300,7 +347,7 @@ def edit_service(srv_var_name):
         st.rerun()
 
 @st.dialog("Edit Service client")
-def edit_client(client_var_name):
+def edit_client(client_var_name: str):
     editing_client, index = st.session_state['gen'].get_client(client_var_name)
     client_info = {}
     client_info["srv_name"] = st.text_input("Service name", value=editing_client.get("srv_name", ""))
@@ -319,7 +366,7 @@ def edit_client(client_var_name):
         st.rerun()
 
 @st.dialog("Edit Action server")
-def edit_action_server(action_srv_var_name):
+def edit_action_server(action_srv_var_name: str):
     editing_action_srv, index = st.session_state['gen'].get_action_server(action_srv_var_name)
     action_srv_info = {}
     action_srv_info["name"] = st.text_input("Action name", value=editing_action_srv.get("name", ""))
@@ -344,7 +391,7 @@ def edit_action_server(action_srv_var_name):
         st.rerun()
 
 @st.dialog("Edit Action client")
-def edit_action_client(action_client_var_name):
+def edit_action_client(action_client_var_name: str):
     editing_action_client, index = st.session_state['gen'].get_action_client(action_client_var_name)
     action_client_info = {}
     action_client_info["srv_name"] = st.text_input("Action name", value=editing_action_client.get("srv_name", ""))
@@ -367,6 +414,53 @@ def edit_action_client(action_client_var_name):
         st.session_state['gen'].update_action_client(action_client_info, index)
         st.rerun()
 
+@st.dialog("Edit synchronized subscriber")
+def __edit_sync_sub(sync_sub_var_name: str):
+    editing_sync_sub, index = st.session_state['gen'].get_sync_subscription(sync_sub_var_name)
+    num_max_subs = 9
+    sync_sub_info = {}
+    sync_sub_info["var_name"] = st.text_input("Variable name", value=editing_sync_sub.get("var_name", ""))
+    sync_sub_info["callback"] = st.text_input("Synchronized callback function name", value=editing_sync_sub.get("callback", ""))
+    sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"])
+    sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1, value=editing_sync_sub.get("queue_size", 1))
+    # "epsilon": "", # rclcpp::Duration (only for "ApproximateEpsilonTime")
+    
+    with st.form("Add subscription", clear_on_submit=True):
+        st.subheader("Subscription params")
+        # TODO: add ability to edit subscribers
+        sub_info = get_pub_sub_info()
+        with st.expander('QoS settings'):
+            sub_info["qos"] = add_qos()
+        if st.form_submit_button("Add topic"):
+            # TODO: add check for empty fields
+            if len(st.session_state['temp_subs']) < num_max_subs:
+                st.session_state['temp_subs'].append(sub_info)
+            else:
+                st.error("Number of synchronized topics in C++ API cannot exceed 9")
+    
+    def remove_sub(var_name: str):
+        index = next(iter([i for i, s in enumerate(st.session_state['temp_subs']) if s["var_name"] == var_name]), -1)
+        if index >= 0:
+            del st.session_state['temp_subs'][index]
+    
+    for sub in st.session_state['temp_subs']:
+        var_name = sub["var_name"]
+        text_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "🗑️", help="Remove subscriber", on_click=lambda var=var_name: remove_sub(var), btn_key=var_name)
+    
+    if st.button("Submit"):
+        # TODO: add check for fields and num subs
+        sync_sub_info["subs"] = st.session_state['temp_subs'].copy()
+        st.session_state["gen"].update_sync_subscription(sync_sub_info, index)
+        st.session_state['temp_subs'] = []
+        st.rerun()
+    pass
+
+def edit_sync_sub(sync_sub_var_name: str):
+    # TODO: fill temp_subs
+    editing_sync_sub, index = st.session_state['gen'].get_sync_subscription(sync_sub_var_name)
+    st.session_state['temp_subs'] = editing_sync_sub["subs"]
+    __edit_sync_sub(sync_sub_var_name)
+
 with st.sidebar:
     
     # TODO: Remove button later
@@ -377,10 +471,6 @@ with st.sidebar:
         st.session_state["gen"]['is_component'] = True
         st.session_state["gen"]['include_pkgs'] = {}
         st.session_state["gen"]['includes'] = {}
-        st.session_state["gen"]['params'] = []
-        st.session_state["gen"]['publishers'] = []
-        st.session_state["gen"]['subscribers'] = []
-        st.session_state["gen"]["timers"] = []
         st.session_state["gen"]["package_name"] = "my_package"
         st.session_state["gen"]["cmake_target_name"] = "my_library"
         st.session_state["gen"].add_publisher({"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
@@ -433,32 +523,27 @@ def draw_node() -> Digraph:
 
 with st.expander("Node structure", expanded=True):
     
-    def text_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
-        text_col, btn_col = st.columns([2, 1], vertical_alignment='center')
-        text_col.write(text)
-        return btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
-    
     def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
         cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
         btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
         return cb_col.checkbox(text)
      
-    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}, 'action_client': {}}
+    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}, 'action_client': {}, 'sync_sub': {}}
         
     text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
     for sub in st.session_state['gen']["subscribers"]:
         var_name = sub["var_name"]
-        checkboxes['sub'][var_name] = checkboxes_with_button(f'`{sub["var_name"]}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=sub["var_name"], on_click=lambda var=var_name: edit_subscriber(var))
+        checkboxes['sub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_subscriber(var))
     
     text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
     for pub in st.session_state['gen']["publishers"]:
         var_name = pub["var_name"]
-        checkboxes['pub'][var_name] = checkboxes_with_button(f'`{pub["var_name"]}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=pub["var_name"], on_click=lambda var=var_name: edit_publisher(var))
+        checkboxes['pub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_publisher(var))
     
     text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
     for tim in st.session_state['gen']["timers"]:
         var_name = tim["var_name"]
-        checkboxes['timers'][var_name] = checkboxes_with_button(f'`{tim["var_name"]}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=tim["var_name"], on_click=lambda var=var_name: edit_timer(var))
+        checkboxes['timers'][var_name] = checkboxes_with_button(f'`{var_name}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_timer(var))
     
     text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
     for par in st.session_state['gen']["params"]:
@@ -468,22 +553,27 @@ with st.expander("Node structure", expanded=True):
     text_with_button("👂 Service servers:", "➕", help="Add service server", on_click=lambda: add_service())
     for srv in st.session_state['gen']["services"]:
         var_name = srv["var_name"]
-        checkboxes['srv'][var_name] = checkboxes_with_button(f'`{srv["var_name"]}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=srv["var_name"], on_click=lambda var=var_name: edit_service(var))
+        checkboxes['srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_service(var))
     
     text_with_button("🗣️ Service clients:", "➕", help="Add service client", on_click=lambda: add_client())
     for client in st.session_state['gen']["clients"]:
         var_name = client["var_name"]
-        checkboxes['client'][var_name] = checkboxes_with_button(f'`{client["var_name"]}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=client["var_name"], on_click=lambda var=var_name: edit_client(var))
+        checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
     
     text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
     for action_srv in st.session_state['gen']["action_servers"]:
         var_name = action_srv["var_name"]
-        checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{action_srv["var_name"]}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=action_srv["var_name"], on_click=lambda var=var_name: edit_action_server(var))
+        checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
     
     text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
     for action_client in st.session_state['gen']["action_clients"]:
         var_name = action_client["var_name"]
-        checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{action_client["var_name"]}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=action_client["var_name"], on_click=lambda var=var_name: edit_action_client(var))
+        checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
+    
+    text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscribers", on_click=lambda: add_sync_sub())
+    for sync_sub in st.session_state['gen']["sync_subscribers"]:
+        var_name = sync_sub["var_name"]
+        checkboxes['sync_sub'][var_name] = checkboxes_with_button(f'`{var_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_sync_sub(var))
     
     # Remove selected items
     if st.button("Remove selected items 🗑️", type="primary"):
@@ -495,6 +585,7 @@ with st.expander("Node structure", expanded=True):
         st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
         st.session_state['gen'].remove_action_servers([k for k, v in checkboxes['action_srv'].items() if v])
         st.session_state['gen'].remove_action_clients([k for k, v in checkboxes['action_client'].items() if v])
+        st.session_state['gen'].remove_sync_subscriptions([k for k, v in checkboxes['sync_sub'].items() if v])
         st.rerun()
     
     # Visualize node's graph
