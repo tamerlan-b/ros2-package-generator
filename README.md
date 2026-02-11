@@ -24,7 +24,8 @@ Support for all major ROS2 node elements:
 - [x] **🔧 Services** (servers and clients)
 - [x] **⏱️ Timers** (periodic callbacks)
 - [x] **⚙️ Parameters** (declaration and initialization)
-- [x] **🎯 Actions** (action servers)
+- [x] **🎯 Actions** (action servers and clients)
+- [x] **🔀 Synchronized subscribers** via [message_filters](https://github.com/ros2/message_filters)
 
 ##### 🎨 **Visual Constructor**
 Intuitive interface for:
@@ -87,12 +88,12 @@ streamlit run ros2_package_generator.py
 ### TODO
 - [x] Add the ability to edit publishers and subscribers
 - [x] Update README
-- [ ] Add support for:
+- [x] Add support for:
   - [x] ros2-params
   - [x] ros2-timers
   - [x] ros2-service
   - [x] ros2-actions
-  - [ ] message_filters
+  - [x] message_filters
 - [ ] Support newer ROS2 distros (humble, iron, jazzy)
 - [x] Add download button for generated files
 - [ ] Visualize package structure (with directories)
