@@ -1,0 +1,21 @@
+{% macro generate_qos_expression(qos_config) %}
+    {% if qos_config.is_default %}
+        {{- '{' ~ qos_config.queue_size ~ '}' -}}
+    {% else %}
+        {% set expr = 'rclcpp::QoS(' ~ qos_config.queue_size ~ ')' %}
+        {% if qos_config.is_keep_all %}
+            {% set expr = expr ~ '.keep_all()' %}
+        {% endif %}
+        {% if qos_config.is_best_effort %}
+            {% set expr = expr ~ '.best_effort()' %}
+        {% else %}
+            {% set expr = expr ~ '.reliable()' %}
+        {% endif %}
+        {% if qos_config.is_transient_local %}
+            {% set expr = expr ~ '.transient_local()' %}
+        {% else %}
+            {% set expr = expr ~ '.durability_volatile()' %}
+        {% endif %}
+        {{- expr -}}
+    {% endif %}
+{% endmacro %}
