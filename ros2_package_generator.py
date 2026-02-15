@@ -497,7 +497,6 @@ with st.sidebar:
     st.session_state['gen']["node_ns"] = st.text_input("Node namespace", "my_ns")
     node_type = st.radio("Node type", ["node", "component"], index=1, horizontal=True)
     st.session_state['gen']["is_component"] = node_type == "component"
-    st.session_state['gen']["tf_listener"] = st.checkbox("Add tf listener", False)
 
 def create_elems_code_cols(is_mobile: bool):
     if is_mobile:
@@ -538,6 +537,8 @@ with col_elems:
         return dot
 
     with st.expander("Node structure", expanded=True):
+        
+        st.session_state['gen']["tf_listener"] = st.toggle("🧭 TF Listener")
         
         def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
             cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
