@@ -40,6 +40,9 @@ if "autocompletes" not in st.session_state:
 if 'gen' not in st.session_state:
     st.session_state['gen'] = Ros2PkgGenerator()
 
+if 'view' not in st.session_state:
+    st.session_state['view'] = 'Desktop'
+
 def text_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
     text_col, btn_col = st.columns([2, 1], vertical_alignment='center')
     text_col.write(text)
@@ -463,8 +466,10 @@ def edit_sync_sub(sync_sub_var_name: str):
 
 with st.sidebar:
     
+    st.session_state['view'] = st.radio("Page view", ["Desktop", "Mobile"], horizontal=True)
+    
     # TODO: Remove button later
-    if st.button("Fill by default"):
+    if st.button("Fill package by default"):
         st.session_state["gen"]["node_filename"] = "node"
         st.session_state["gen"]['node_classname'] = 'MyNode'
         st.session_state["gen"]['node_name'] = 'node'
@@ -494,171 +499,190 @@ with st.sidebar:
     st.session_state['gen']["is_component"] = node_type == "component"
     st.session_state['gen']["tf_listener"] = st.checkbox("Add tf listener", False)
 
-def draw_node() -> Digraph:
-    dot = Digraph(comment='ROS2 Node', format='svg')
-    dot.attr(rankdir='LR')  # Left to right
+def create_elems_code_cols(is_mobile: bool):
+    if is_mobile:
+        return st.container(), st.container()
+    else:
+        return st.columns(2)
 
-    # Set styles
-    dot.attr('node', shape='box', style='filled', color='lightblue2')
-    dot.attr('edge', arrowhead='normal')
-    
-    # Add node (in the middle)
-    dot.node('NODE', st.session_state['gen']['node_name'], shape='box', style='filled', 
-            fillcolor='lightblue', fontsize='16', fontname='Arial')
+st.set_page_config(layout="centered" if st.session_state['view'] == 'Mobile' else "wide")
+col_elems, col_code = create_elems_code_cols(st.session_state['view'] == 'Mobile')
 
-    # Add input topics (subscribers) - to the left
-    for i, sub in enumerate(st.session_state['gen']['subscribers']):
-        dot.node(f'IN_{i}', sub["topic"], shape='parallelogram', 
-                style='filled', fillcolor='lightcoral')
-        dot.edge(f'IN_{i}', 'NODE', label='')
+with col_elems:
 
-    # Add output topics (publishers) - to the right
-    for i, pub in enumerate(st.session_state['gen']['publishers']):
-        dot.node(f'OUT_{i}', pub["topic"], shape='parallelogram', 
-                style='filled', fillcolor='lightgreen')
-        dot.edge('NODE', f'OUT_{i}', label='')
+    def draw_node() -> Digraph:
+        dot = Digraph(comment='ROS2 Node', format='svg')
+        dot.attr(rankdir='LR')  # Left to right
 
-    # TODO: add visualization for services
-    return dot
-
-with st.expander("Node structure", expanded=True):
-    
-    def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
-        cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
-        btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
-        return cb_col.checkbox(text)
-     
-    checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}, 'action_client': {}, 'sync_sub': {}}
+        # Set styles
+        dot.attr('node', shape='box', style='filled', color='lightblue2')
+        dot.attr('edge', arrowhead='normal')
         
-    text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
-    for sub in st.session_state['gen']["subscribers"]:
-        var_name = sub["var_name"]
-        checkboxes['sub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_subscriber(var))
-    
-    text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
-    for pub in st.session_state['gen']["publishers"]:
-        var_name = pub["var_name"]
-        checkboxes['pub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_publisher(var))
-    
-    text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
-    for tim in st.session_state['gen']["timers"]:
-        var_name = tim["var_name"]
-        checkboxes['timers'][var_name] = checkboxes_with_button(f'`{var_name}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_timer(var))
-    
-    text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
-    for par in st.session_state['gen']["params"]:
-        var_name = par["name"]
-        checkboxes['params'][var_name] = checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var))
-    
-    text_with_button("👂 Service servers:", "➕", help="Add service server", on_click=lambda: add_service())
-    for srv in st.session_state['gen']["services"]:
-        var_name = srv["var_name"]
-        checkboxes['srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_service(var))
-    
-    text_with_button("🗣️ Service clients:", "➕", help="Add service client", on_click=lambda: add_client())
-    for client in st.session_state['gen']["clients"]:
-        var_name = client["var_name"]
-        checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
-    
-    text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
-    for action_srv in st.session_state['gen']["action_servers"]:
-        var_name = action_srv["var_name"]
-        checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
-    
-    text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
-    for action_client in st.session_state['gen']["action_clients"]:
-        var_name = action_client["var_name"]
-        checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
-    
-    text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscribers", on_click=lambda: add_sync_sub())
-    for sync_sub in st.session_state['gen']["sync_subscribers"]:
-        var_name = sync_sub["var_name"]
-        checkboxes['sync_sub'][var_name] = checkboxes_with_button(f'`{var_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_sync_sub(var))
-    
-    # Remove selected items
-    if st.button("Remove selected items 🗑️", type="primary"):
-        st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
-        st.session_state['gen'].remove_subscriptions([k for k, v in checkboxes['sub'].items() if v])
-        st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
-        st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
-        st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
-        st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
-        st.session_state['gen'].remove_action_servers([k for k, v in checkboxes['action_srv'].items() if v])
-        st.session_state['gen'].remove_action_clients([k for k, v in checkboxes['action_client'].items() if v])
-        st.session_state['gen'].remove_sync_subscriptions([k for k, v in checkboxes['sync_sub'].items() if v])
-        st.rerun()
-    
-    # Visualize node's graph
-    with st.expander("Graph", expanded=True):
-        st.graphviz_chart(draw_node())
+        # Add node (in the middle)
+        dot.node('NODE', st.session_state['gen']['node_name'], shape='box', style='filled', 
+                fillcolor='lightblue', fontsize='16', fontname='Arial')
 
-def create_package_archive_structure(pkg_name: str, node_name: str, 
-                                    files_content: Dict[str, str]) -> io.BytesIO:
-    zip_buffer = io.BytesIO()
-    
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # 1. Header file
-        hpp_path = f"{pkg_name}/include/{pkg_name}/{node_name}.hpp"
-        zf.writestr(hpp_path, files_content.get('hpp', ''))
+        # Add input topics (subscribers) - to the left
+        for i, sub in enumerate(st.session_state['gen']['subscribers']):
+            dot.node(f'IN_{i}', sub["topic"], shape='parallelogram', 
+                    style='filled', fillcolor='lightcoral')
+            dot.edge(f'IN_{i}', 'NODE', label='')
+
+        # Add output topics (publishers) - to the right
+        for i, pub in enumerate(st.session_state['gen']['publishers']):
+            dot.node(f'OUT_{i}', pub["topic"], shape='parallelogram', 
+                    style='filled', fillcolor='lightgreen')
+            dot.edge('NODE', f'OUT_{i}', label='')
+
+        # TODO: add visualization for services
+        return dot
+
+    with st.expander("Node structure", expanded=True):
         
-        # 2. Source file
-        cpp_path = f"{pkg_name}/src/{node_name}.cpp"
-        zf.writestr(cpp_path, files_content.get('cpp', ''))
+        def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
+            cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
+            btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
+            return cb_col.checkbox(text)
         
-        # 3. CMakeLists.txt
-        cmake_path = f"{pkg_name}/CMakeLists.txt"
-        zf.writestr(cmake_path, files_content.get('cmake', ''))
+        checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}, 'action_client': {}, 'sync_sub': {}}
+            
+        text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
+        for sub in st.session_state['gen']["subscribers"]:
+            var_name = sub["var_name"]
+            checkboxes['sub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_subscriber(var))
         
-        # 4. package.xml
-        package_xml_path = f"{pkg_name}/package.xml"
-        zf.writestr(package_xml_path, files_content.get('package_xml', ''))
+        text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
+        for pub in st.session_state['gen']["publishers"]:
+            var_name = pub["var_name"]
+            checkboxes['pub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_publisher(var))
+        
+        text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
+        for tim in st.session_state['gen']["timers"]:
+            var_name = tim["var_name"]
+            checkboxes['timers'][var_name] = checkboxes_with_button(f'`{var_name}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_timer(var))
+        
+        text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
+        for par in st.session_state['gen']["params"]:
+            var_name = par["name"]
+            checkboxes['params'][var_name] = checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var))
+        
+        text_with_button("👂 Service servers:", "➕", help="Add service server", on_click=lambda: add_service())
+        for srv in st.session_state['gen']["services"]:
+            var_name = srv["var_name"]
+            checkboxes['srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_service(var))
+        
+        text_with_button("🗣️ Service clients:", "➕", help="Add service client", on_click=lambda: add_client())
+        for client in st.session_state['gen']["clients"]:
+            var_name = client["var_name"]
+            checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
+        
+        text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
+        for action_srv in st.session_state['gen']["action_servers"]:
+            var_name = action_srv["var_name"]
+            checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
+        
+        text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
+        for action_client in st.session_state['gen']["action_clients"]:
+            var_name = action_client["var_name"]
+            checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
+        
+        text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscribers", on_click=lambda: add_sync_sub())
+        for sync_sub in st.session_state['gen']["sync_subscribers"]:
+            var_name = sync_sub["var_name"]
+            checkboxes['sync_sub'][var_name] = checkboxes_with_button(f'`{var_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_sync_sub(var))
+        
+        # Remove selected items
+        if st.button("Remove selected items 🗑️", type="primary"):
+            st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
+            st.session_state['gen'].remove_subscriptions([k for k, v in checkboxes['sub'].items() if v])
+            st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
+            st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
+            st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
+            st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
+            st.session_state['gen'].remove_action_servers([k for k, v in checkboxes['action_srv'].items() if v])
+            st.session_state['gen'].remove_action_clients([k for k, v in checkboxes['action_client'].items() if v])
+            st.session_state['gen'].remove_sync_subscriptions([k for k, v in checkboxes['sync_sub'].items() if v])
+            st.rerun()
+        
+        # Visualize node's graph
+        with st.expander("Graph", expanded=True):
+            st.graphviz_chart(draw_node())
+
+with col_code:
+
+    def create_package_archive_structure(pkg_name: str, node_name: str, 
+                                        files_content: Dict[str, str]) -> io.BytesIO:
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # 1. Header file
+            hpp_path = f"{pkg_name}/include/{pkg_name}/{node_name}.hpp"
+            zf.writestr(hpp_path, files_content.get('hpp', ''))
+            
+            # 2. Source file
+            cpp_path = f"{pkg_name}/src/{node_name}.cpp"
+            zf.writestr(cpp_path, files_content.get('cpp', ''))
+            
+            # 3. CMakeLists.txt
+            cmake_path = f"{pkg_name}/CMakeLists.txt"
+            zf.writestr(cmake_path, files_content.get('cmake', ''))
+            
+            # 4. package.xml
+            package_xml_path = f"{pkg_name}/package.xml"
+            zf.writestr(package_xml_path, files_content.get('package_xml', ''))
+        
+        zip_buffer.seek(0)
+        return zip_buffer
+
+    # Generate package's files
+    files = st.session_state['gen'].generate_files()
+
+    def simple_download_button():
+        zip_files = {
+            'hpp': [v for f, v in files.items() if ".hpp" in f][0],
+            'cpp': [v for f, v in files.items() if ".cpp" in f][0],
+            'cmake': [v for f, v in files.items() if "CMakeLists.txt" == f][0],
+            'package_xml': [v for f, v in files.items() if "package.xml" == f][0],
+        }
+        
+        zip_buffer = create_package_archive_structure(
+            st.session_state["gen"]["package_name"], 
+            st.session_state["gen"]["node_filename"], 
+            zip_files)
+        
+        st.download_button(
+            "📦 Download Package",
+            data=zip_buffer,
+            file_name=f'{st.session_state["gen"]["package_name"]}.zip',
+            mime="application/zip"
+        )
+
     
-    zip_buffer.seek(0)
-    return zip_buffer
-
-# Generate package's files
-files = st.session_state['gen'].generate_files()
-
-def simple_download_button():
-    zip_files = {
-        'hpp': [v for f, v in files.items() if ".hpp" in f][0],
-        'cpp': [v for f, v in files.items() if ".cpp" in f][0],
-        'cmake': [v for f, v in files.items() if "CMakeLists.txt" == f][0],
-        'package_xml': [v for f, v in files.items() if "package.xml" == f][0],
-    }
+    col_command, col_button = st.columns([0.8, 0.2], vertical_alignment='center')
     
-    zip_buffer = create_package_archive_structure(
-        st.session_state["gen"]["package_name"], 
-        st.session_state["gen"]["node_filename"], 
-        zip_files)
+    with col_command:
+        # Write terminal command for package generation
+        with st.expander("ROS2 pkg create command:", expanded=True):
+            st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["gen"]["package_name"]}', language="bash")
+
+    with col_button:
+        # Add "Download Package" button
+        simple_download_button()
+        
     
-    st.download_button(
-        "📦 Download Package",
-        data=zip_buffer,
-        file_name=f'{st.session_state["gen"]["package_name"]}.zip',
-        mime="application/zip"
-    )
+    tabs = st.tabs(files.keys())
+    index = 0
+    for fname, fcontent in files.items():
+        with tabs[index]:
+            if ".hpp" in fname or ".cpp" in fname:
+                st.code(fcontent, language="cpp")
+            elif ".xml" in fname:
+                st.code(fcontent, language="xml")
+            elif fname == "CMakeLists.txt":
+                st.code(fcontent, language="cmake")
+            else:
+                st.code(fcontent)
+        index += 1
 
-# Add "Download Package" button
-simple_download_button()
-
-# Write terminal command for package generation
-with st.expander("ROS2 pkg create command:", expanded=True):
-    st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["gen"]["package_name"]}', language="bash")
-
-tabs = st.tabs(files.keys())
-index = 0
-for fname, fcontent in files.items():
-    with tabs[index]:
-        if ".hpp" in fname or ".cpp" in fname:
-            st.code(fcontent, language="cpp")
-        elif ".xml" in fname:
-            st.code(fcontent, language="xml")
-        elif fname == "CMakeLists.txt":
-            st.code(fcontent, language="cmake")
-        else:
-            st.code(fcontent)
-    index += 1
-
-# For debug
-# st.write(st.session_state['gen'].config)
+    # For debug
+    # st.write(st.session_state['gen'].config)
