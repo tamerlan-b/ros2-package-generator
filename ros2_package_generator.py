@@ -536,78 +536,81 @@ with col_elems:
         # TODO: add visualization for services
         return dot
 
-    with st.expander("Node structure", expanded=True):
-        
-        st.session_state['gen']["tf_listener"] = st.toggle("🧭 TF Listener")
-        
-        def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
-            cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
-            btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
-            return cb_col.checkbox(text)
-        
-        checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}, 'action_client': {}, 'sync_sub': {}}
+    elems_tab, graph_tab = st.tabs(["Node elements", "Graph"])
+    
+    with elems_tab:
+        with st.expander("Node structure", expanded=True):
             
-        text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
-        for sub in st.session_state['gen']["subscribers"]:
-            var_name = sub["var_name"]
-            checkboxes['sub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_subscriber(var))
-        
-        text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
-        for pub in st.session_state['gen']["publishers"]:
-            var_name = pub["var_name"]
-            checkboxes['pub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_publisher(var))
-        
-        text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
-        for tim in st.session_state['gen']["timers"]:
-            var_name = tim["var_name"]
-            checkboxes['timers'][var_name] = checkboxes_with_button(f'`{var_name}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_timer(var))
-        
-        text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
-        for par in st.session_state['gen']["params"]:
-            var_name = par["name"]
-            checkboxes['params'][var_name] = checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var))
-        
-        text_with_button("👂 Service servers:", "➕", help="Add service server", on_click=lambda: add_service())
-        for srv in st.session_state['gen']["services"]:
-            var_name = srv["var_name"]
-            checkboxes['srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_service(var))
-        
-        text_with_button("🗣️ Service clients:", "➕", help="Add service client", on_click=lambda: add_client())
-        for client in st.session_state['gen']["clients"]:
-            var_name = client["var_name"]
-            checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
-        
-        text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
-        for action_srv in st.session_state['gen']["action_servers"]:
-            var_name = action_srv["var_name"]
-            checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
-        
-        text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
-        for action_client in st.session_state['gen']["action_clients"]:
-            var_name = action_client["var_name"]
-            checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
-        
-        text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscribers", on_click=lambda: add_sync_sub())
-        for sync_sub in st.session_state['gen']["sync_subscribers"]:
-            var_name = sync_sub["var_name"]
-            checkboxes['sync_sub'][var_name] = checkboxes_with_button(f'`{var_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_sync_sub(var))
-        
-        # Remove selected items
-        if st.button("Remove selected items 🗑️", type="primary"):
-            st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
-            st.session_state['gen'].remove_subscriptions([k for k, v in checkboxes['sub'].items() if v])
-            st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
-            st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
-            st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
-            st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
-            st.session_state['gen'].remove_action_servers([k for k, v in checkboxes['action_srv'].items() if v])
-            st.session_state['gen'].remove_action_clients([k for k, v in checkboxes['action_client'].items() if v])
-            st.session_state['gen'].remove_sync_subscriptions([k for k, v in checkboxes['sync_sub'].items() if v])
-            st.rerun()
-        
-        # Visualize node's graph
-        with st.expander("Graph", expanded=True):
-            st.graphviz_chart(draw_node())
+            st.session_state['gen']["tf_listener"] = st.toggle("🧭 TF Listener")
+            
+            def checkboxes_with_button(text: str, button_icon: str="➕", help: str=None, on_click=None, btn_key=None):
+                cb_col, btn_col = st.columns([2, 1], vertical_alignment='center')
+                btn_col.button(button_icon, help=help, on_click=on_click, key=btn_key)
+                return cb_col.checkbox(text)
+            
+            checkboxes = {'sub': {}, 'pub': {}, 'params': {}, 'timers': {}, 'srv': {}, 'client': {}, 'action_srv': {}, 'action_client': {}, 'sync_sub': {}}
+                
+            text_with_button("📥 Subscribers:", "➕", help="Add subscriber", on_click=lambda: add_subscriber())
+            for sub in st.session_state['gen']["subscribers"]:
+                var_name = sub["var_name"]
+                checkboxes['sub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_subscriber(var))
+            
+            text_with_button("📤 Publishers:", "➕", help="Add publisher", on_click=lambda: add_publisher())
+            for pub in st.session_state['gen']["publishers"]:
+                var_name = pub["var_name"]
+                checkboxes['pub'][var_name] = checkboxes_with_button(f'`{var_name}` (`{pub["msg_type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_publisher(var))
+            
+            text_with_button("⏱️ Timers:", "➕", help="Add timer", on_click=lambda: add_timer())
+            for tim in st.session_state['gen']["timers"]:
+                var_name = tim["var_name"]
+                checkboxes['timers'][var_name] = checkboxes_with_button(f'`{var_name}`: `{tim["period"]}ms`', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_timer(var))
+            
+            text_with_button("🔧 Parameters:", "➕", help="Add parameter", on_click=lambda: add_parameter())
+            for par in st.session_state['gen']["params"]:
+                var_name = par["name"]
+                checkboxes['params'][var_name] = checkboxes_with_button(f'`{par["name"]}` (`{par["type"]}`)', "✏️", help="Edit", btn_key=par["name"], on_click=lambda var=var_name: edit_parameter(var))
+            
+            text_with_button("👂 Service servers:", "➕", help="Add service server", on_click=lambda: add_service())
+            for srv in st.session_state['gen']["services"]:
+                var_name = srv["var_name"]
+                checkboxes['srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_service(var))
+            
+            text_with_button("🗣️ Service clients:", "➕", help="Add service client", on_click=lambda: add_client())
+            for client in st.session_state['gen']["clients"]:
+                var_name = client["var_name"]
+                checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
+            
+            text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
+            for action_srv in st.session_state['gen']["action_servers"]:
+                var_name = action_srv["var_name"]
+                checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
+            
+            text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
+            for action_client in st.session_state['gen']["action_clients"]:
+                var_name = action_client["var_name"]
+                checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
+            
+            text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscriber", on_click=lambda: add_sync_sub())
+            for sync_sub in st.session_state['gen']["sync_subscribers"]:
+                var_name = sync_sub["var_name"]
+                checkboxes['sync_sub'][var_name] = checkboxes_with_button(f'`{var_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_sync_sub(var))
+            
+            # Remove selected items
+            if st.button("Remove selected items 🗑️", type="primary"):
+                st.session_state['gen'].remove_publishers([k for k, v in checkboxes['pub'].items() if v])
+                st.session_state['gen'].remove_subscriptions([k for k, v in checkboxes['sub'].items() if v])
+                st.session_state['gen'].remove_params([k for k, v in checkboxes['params'].items() if v])
+                st.session_state['gen'].remove_timers([k for k, v in checkboxes['timers'].items() if v])
+                st.session_state['gen'].remove_services([k for k, v in checkboxes['srv'].items() if v])
+                st.session_state['gen'].remove_clients([k for k, v in checkboxes['client'].items() if v])
+                st.session_state['gen'].remove_action_servers([k for k, v in checkboxes['action_srv'].items() if v])
+                st.session_state['gen'].remove_action_clients([k for k, v in checkboxes['action_client'].items() if v])
+                st.session_state['gen'].remove_sync_subscriptions([k for k, v in checkboxes['sync_sub'].items() if v])
+                st.rerun()
+            
+    # Visualize node's graph
+    with graph_tab:
+        st.graphviz_chart(draw_node())
 
 with col_code:
 
