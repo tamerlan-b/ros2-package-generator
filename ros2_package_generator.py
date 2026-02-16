@@ -10,6 +10,8 @@ from generator_core import Ros2PkgGenerator
 
 st.title("ROS2 Package Generator")
 
+st.set_page_config(page_title="ROS2 Package Generator", page_icon="resources/icon.png")
+
 def parse_ros_interfaces_file(filename: str):
     mapping = {
         "Messages:": "msg",
