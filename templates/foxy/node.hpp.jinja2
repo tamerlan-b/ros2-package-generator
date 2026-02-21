@@ -5,8 +5,10 @@
 
 #include "rclcpp/rclcpp.hpp"
 {% if tf_listener %}
+{% block tf_includes %}
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
+{% endblock %}
 {% endif %}
 {% for include in includes %}
 #include "{{ include }}"

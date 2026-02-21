@@ -99,22 +99,15 @@ class Ros2PkgGenerator:
             lstrip_blocks=True
         )
         
-        self.templates =  {
-            "foxy":
-                {
-                    'hpp': self.env.get_template('foxy/node.hpp.jinja2'),
-                    'cpp': self.env.get_template('foxy/node.cpp.jinja2'),
-                    'xml': self.env.get_template('foxy/package.xml.jinja2'),
-                    'cmake': self.env.get_template('foxy/CMakeLists.txt.jinja2'),
-                }, 
-            "galactic":
-                {
-                    'hpp': self.env.get_template('galactic/node.hpp.jinja2'),
-                    'cpp': self.env.get_template('galactic/node.cpp.jinja2'),
-                    'xml': self.env.get_template('galactic/package.xml.jinja2'),
-                    'cmake': self.env.get_template('galactic/CMakeLists.txt.jinja2'),
-                }
-        }
+        supported_ros_distros = ["foxy", "galactic", "humble"]
+        self.templates =  {}
+        for distro in supported_ros_distros:
+            self.templates[distro] = {
+                'hpp': self.env.get_template(f'{distro}/node.hpp.jinja2'),
+                'cpp': self.env.get_template(f'{distro}/node.cpp.jinja2'),
+                'xml': self.env.get_template(f'{distro}/package.xml.jinja2'),
+                'cmake': self.env.get_template(f'{distro}/CMakeLists.txt.jinja2'),
+            }
         
         self.cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
     
