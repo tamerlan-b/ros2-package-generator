@@ -1,9 +1,0 @@
-    {% for action_client in action_clients %}
-    this->{{ action_client.var_name }} = rclcpp_action::create_client<{{ action_client.type }}>(
-      this,
-      "{{ action_client.srv_name}}");
-
-    this->{{ action_client.var_name }}_once_timer = this->create_wall_timer(
-      std::chrono::milliseconds(500),
-      [&](){ this->{{ action_client.var_name }}_once_timer_cb(); });
-    {% endfor %}
