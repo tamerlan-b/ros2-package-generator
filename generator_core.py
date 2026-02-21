@@ -443,6 +443,7 @@ class Ros2PkgGenerator:
     
     def generate_files(self):
         self.__update_includes()
+        # TODO: Update ad
         self.config["advertisement"] = "The package was created using ros2-package-generator: https://github.com/tamerlan-b/ros2-package-generator.git"
         return {
             f'{self.config["node_filename"]}.hpp': self.templates['hpp'].render(**self.config), 

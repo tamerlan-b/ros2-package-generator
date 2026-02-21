@@ -1,7 +1,15 @@
 {% from 'elements/qos_macros.jinja2' import generate_qos_expression %}
     {% for sub in subscribers %}
+    {% if is_component and sub.qos.is_transient_local %}
+    rclcpp::SubscriptionOptions {{ sub.var_name }}_opts{};
+    {{ sub.var_name }}_opts.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
+    {% endif %}
     this->{{ sub.var_name }} = this->create_subscription<{{ sub.msg_type }}>(
         "{{ sub.topic }}", 
         {{ generate_qos_expression(sub.qos) }}, 
-        [&]({{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg) { this->{{ sub.callback }}(std::move(msg)); });
+        [&]({{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg) { this->{{ sub.callback }}(std::move(msg)); }
+        {% if is_component and sub.qos.is_transient_local %}
+        , {{ sub.var_name }}_opts
+        {% endif %}
+    );
     {% endfor %}

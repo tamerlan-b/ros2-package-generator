@@ -1,4 +1,14 @@
 {% from 'elements/qos_macros.jinja2' import generate_qos_expression %}
     {% for pub in publishers %}
-    this->{{ pub.var_name }} = this->create_publisher<{{ pub.msg_type }}>("{{ pub.topic }}", {{ generate_qos_expression(pub.qos) }});
+    {% if is_component and pub.qos.is_transient_local %}
+    rclcpp::PublisherOptions {{ pub.var_name }}_opts;
+    {{ pub.var_name }}_opts.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
+    {% endif %}
+    this->{{ pub.var_name }} = this->create_publisher<{{ pub.msg_type }}>(
+        "{{ pub.topic }}", 
+        {{ generate_qos_expression(pub.qos) }}
+        {% if is_component and pub.qos.is_transient_local %}
+        , {{ pub.var_name }}_opts
+        {% endif %}
+    );
     {% endfor %}
