@@ -99,7 +99,7 @@ class Ros2PkgGenerator:
             lstrip_blocks=True
         )
         
-        supported_ros_distros = ["foxy", "galactic", "humble", "iron"]
+        supported_ros_distros = ["foxy", "galactic", "humble", "iron", "jazzy"]
         self.templates =  {}
         for distro in supported_ros_distros:
             self.templates[distro] = {

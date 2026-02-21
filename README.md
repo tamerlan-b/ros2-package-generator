@@ -103,6 +103,6 @@ streamlit run ros2_package_generator.py
 | galactic | ✅ | ✅ |
 | humble | ✅ | ❌ |
 | iron | ✅ | ❌ |
-| jazzy | ❌ | ❌ |
+| jazzy | ✅ | ❌ |
 | lyrical | ❌ | ❌ |
 
