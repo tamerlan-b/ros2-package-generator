@@ -100,10 +100,10 @@ class Ros2PkgGenerator:
         )
         
         self.templates = {
-            'hpp': self.env.get_template('node.hpp.j2'),
-            'cpp': self.env.get_template('node.cpp.j2'),
-            'xml': self.env.get_template('package.xml.j2'),
-            'cmake': self.env.get_template('CMakeLists.txt.j2'),
+            'hpp': self.env.get_template('node.hpp.jinja2'),
+            'cpp': self.env.get_template('node.cpp.jinja2'),
+            'xml': self.env.get_template('package.xml.jinja2'),
+            'cmake': self.env.get_template('CMakeLists.txt.jinja2'),
         }
         
         self.cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}

@@ -33,12 +33,12 @@ namespace {{ node_ns }}
     {% if publishers %}
     // Publishers
     {% endif %}
-    {% include 'elements/pubs.ctor.cpp.j2' %}
+    {% include 'elements/pubs.ctor.cpp.jinja2' %}
     
     {% if subscribers %}
     // Subscribers
     {% endif %}
-    {% include 'elements/subs.ctor.cpp.j2' %}
+    {% include 'elements/subs.ctor.cpp.jinja2' %}
 
     {% if timers %}
     // Timers
@@ -69,17 +69,17 @@ namespace {{ node_ns }}
     {% if action_servers %}
     // Action servers
     {% endif %}
-    {% include 'elements/action_servers.ctor.cpp.j2' %}
+    {% include 'elements/action_servers.ctor.cpp.jinja2' %}
 
     {% if action_clients %}
     // Action clients
     {% endif %}
-    {% include 'elements/action_clients.ctor.cpp.j2' %}
+    {% include 'elements/action_clients.ctor.cpp.jinja2' %}
     
     {% if sync_subscribers %}
     // Synchronized subscribers (message_filters)
     {% endif %}
-    {% include 'elements/sync_subs.ctor.cpp.j2' %}
+    {% include 'elements/sync_subs.ctor.cpp.jinja2' %}
 }
 
 {% for sub in subscribers %}
@@ -105,9 +105,9 @@ void {{ node_classname }}::{{ srv.callback }}(
 }
 {% endfor %}
 
-{% include 'elements/action_servers.cpp.j2' %}
+{% include 'elements/action_servers.cpp.jinja2' %}
 
-{% include 'elements/action_clients.cpp.j2' %}
+{% include 'elements/action_clients.cpp.jinja2' %}
 
 {% for sync_subs in  sync_subscribers %}
 void {{ node_classname }}::{{ sync_subs.callback }}(

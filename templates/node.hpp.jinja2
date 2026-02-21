@@ -51,9 +51,9 @@ private:
     {% for client in clients %}
     rclcpp::Client<{{ client.type }}>::SharedPtr {{ client.var_name }};
     {% endfor %}
-    {% include 'elements/action_servers.hpp.j2' %}
-    {% include 'elements/action_clients.hpp.j2' %}
-    {% include 'elements/sync_subs.hpp.j2' %}
+    {% include 'elements/action_servers.hpp.jinja2' %}
+    {% include 'elements/action_clients.hpp.jinja2' %}
+    {% include 'elements/sync_subs.hpp.jinja2' %}
 };
 
 {% if node_ns %}
