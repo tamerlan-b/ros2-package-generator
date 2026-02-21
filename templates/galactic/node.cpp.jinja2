@@ -1,0 +1,11 @@
+{% extends "foxy/node.cpp.jinja2" %}
+{% block goal_response_callback_set scoped %}
+    goal_options.goal_response_callback = 
+      [this](GoalHandle_t::SharedPtr gh){this->{{ action_client.goal_response_callback }}(std::move(gh));};
+{% endblock %}
+{% block goal_response_callback_def scoped %}
+void {{ node_classname }}::{{ action_client.goal_response_callback }}(rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr gh)
+{
+    // TODO: change implementation if necessary
+}
+{% endblock %}

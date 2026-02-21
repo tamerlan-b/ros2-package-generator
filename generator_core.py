@@ -99,11 +99,21 @@ class Ros2PkgGenerator:
             lstrip_blocks=True
         )
         
-        self.templates = {
-            'hpp': self.env.get_template('node.hpp.jinja2'),
-            'cpp': self.env.get_template('node.cpp.jinja2'),
-            'xml': self.env.get_template('package.xml.jinja2'),
-            'cmake': self.env.get_template('CMakeLists.txt.jinja2'),
+        self.templates =  {
+            "foxy":
+                {
+                    'hpp': self.env.get_template('foxy/node.hpp.jinja2'),
+                    'cpp': self.env.get_template('foxy/node.cpp.jinja2'),
+                    'xml': self.env.get_template('foxy/package.xml.jinja2'),
+                    'cmake': self.env.get_template('foxy/CMakeLists.txt.jinja2'),
+                }, 
+            "galactic":
+                {
+                    'hpp': self.env.get_template('galactic/node.hpp.jinja2'),
+                    'cpp': self.env.get_template('galactic/node.cpp.jinja2'),
+                    'xml': self.env.get_template('galactic/package.xml.jinja2'),
+                    'cmake': self.env.get_template('galactic/CMakeLists.txt.jinja2'),
+                }
         }
         
         self.cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
@@ -445,9 +455,11 @@ class Ros2PkgGenerator:
         self.__update_includes()
         # TODO: Update ad
         self.config["advertisement"] = "The package was created using ros2-package-generator: https://github.com/tamerlan-b/ros2-package-generator.git"
+        distro = self.config.get("ros_distro", "Foxy").lower()
+        # print(distro)
         return {
-            f'{self.config["node_filename"]}.hpp': self.templates['hpp'].render(**self.config), 
-            f'{self.config["node_filename"]}.cpp': self.templates['cpp'].render(**self.config), 
-            "CMakeLists.txt": self.templates['cmake'].render(**self.config), 
-            'package.xml': self.templates['xml'].render(**self.config),
+            f'{self.config["node_filename"]}.hpp': self.templates[distro]['hpp'].render(**self.config), 
+            f'{self.config["node_filename"]}.cpp': self.templates[distro]['cpp'].render(**self.config), 
+            "CMakeLists.txt": self.templates[distro]['cmake'].render(**self.config), 
+            'package.xml': self.templates[distro]['xml'].render(**self.config),
         }

@@ -5,7 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 {% if tf_listener %}
-#include "tf2_ros/buffer_interface.h"
+#include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
 {% endif %}
 {% for include in includes %}
@@ -13,6 +13,7 @@
 {% endfor %}
 {% if action_clients %}
 #include <future>
+{# Remove for Galactic and higher #}
 {% endif %}
 
 {% if node_ns %}
@@ -62,7 +63,9 @@ private:
     rclcpp_action::Client<{{ action_client.type }}>::SharedPtr {{ action_client.var_name }};
     rclcpp::TimerBase::SharedPtr {{ action_client.var_name }}_once_timer;
     void {{ action_client.var_name }}_once_timer_cb();
+    {% block goal_response_callback scoped %}
     void {{ action_client.goal_response_callback }}(std::shared_future<rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr> future);
+    {% endblock %}
     void {{ action_client.feedback_callback }}(
         rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr gh, 
         const std::shared_ptr<const {{ action_client.type }}::Feedback> feedback);
