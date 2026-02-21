@@ -94,8 +94,15 @@ streamlit run ros2_package_generator.py
   - [x] ros2-service
   - [x] ros2-actions
   - [x] message_filters
-- [ ] Support newer ROS2 distros (humble, iron, jazzy)
 - [x] Add download button for generated files
 - [ ] Visualize package structure (with directories)
+- [ ] Support newer ROS2 distros
 
+| ROS2 Distro | Basic support (code can be compiled) | Extended support (new features) |
+|-|:-:|:-:|
+| galactic | ✅ | ✅ |
+| humble | ✅ | ❌ |
+| iron | ✅ | ❌ |
+| jazzy | ❌ | ❌ |
+| lyrical | ❌ | ❌ |
 
