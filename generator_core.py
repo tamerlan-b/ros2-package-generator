@@ -189,12 +189,7 @@ class Ros2PkgGenerator:
             for s in sync_sub["subs"]:
                 deps.update(s["depends"])
                 includes.update(s["includes"])
-            if sync_sub["sync_policy"] == "ExactTime":
-                includes.add("message_filters/sync_policies/exact_time.h")
-            elif sync_sub["sync_policy"] == "ApproximateTime":
-                includes.add("message_filters/sync_policies/approximate_time.h")
-            elif sync_sub["sync_policy"] == "ApproximateEpsilonTime":   # TODO: remove for Foxy
-                includes.add("message_filters/sync_policies/approximate_epsilon_time.h")
+            includes.add(f"message_filters/sync_policies/{_camel_to_snake(sync_sub['sync_policy'])}.h")
         
         if len(sync_subscribers) > 0:
             deps.add("message_filters")

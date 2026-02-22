@@ -253,9 +253,15 @@ def __add_sync_sub():
     sync_sub_info = {}
     sync_sub_info["var_name"] = st.text_input("Variable name")
     sync_sub_info["callback"] = st.text_input("Synchronized callback function name")
-    sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"]) #, "ApproximateEpsilonTime"])
+    policies = ["ExactTime", "ApproximateTime"]
+    # TODO: in message_filters for humble there are "approximate_epsilon_time.hpp", but there are no "approximate_epsilon_time.h"
+    if st.session_state["gen"]["ros_distro"] > "Humble":
+        sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", policies + ["ApproximateEpsilonTime", "LatestTime"])
+        if sync_sub_info["sync_policy"] == "ApproximateEpsilonTime":
+            sync_sub_info["epsilon"] = st.number_input("Epsilon (ms)", min_value=0, step=1, value=10)
+    else:
+        sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", policies)
     sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1)
-    # "epsilon": "", # rclcpp::Duration (only for "ApproximateEpsilonTime")
     
     with st.form("Add subscription", clear_on_submit=True):
         st.subheader("Subscription params")
