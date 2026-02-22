@@ -160,7 +160,8 @@ class Ros2PkgGenerator:
             has_type_adapters = has_type_adapters or "adapter_name" in p
         
         if has_type_adapters:
-            includes.add("rclcpp_action/type_adapter.hpp")
+            includes.add("rclcpp_action/type_adapter.hpp" if self.config.get("ros_distro", "Foxy").lower() <= "humble" else "rclcpp_action/server.hpp")
+            deps.add("rclcpp_action")
         
         for s in self.config.get("services", []):
             deps.update(s["depends"])
