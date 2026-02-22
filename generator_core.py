@@ -142,13 +142,19 @@ class Ros2PkgGenerator:
         deps = set()
         includes = set()
         
+        has_type_adapters = False
         for s in self.config.get("subscribers", []):
             deps.update(s["depends"])
             includes.update(s["includes"])
+            has_type_adapters = has_type_adapters or "adapter_name" in s
         
         for p in self.config.get("publishers", []):
             deps.update(p["depends"])
             includes.update(p["includes"])
+            has_type_adapters = has_type_adapters or "adapter_name" in p
+        
+        if has_type_adapters:
+            includes.add("rclcpp_action/type_adapter.hpp")
         
         for s in self.config.get("services", []):
             deps.update(s["depends"])
@@ -212,7 +218,9 @@ class Ros2PkgGenerator:
     # Subscriptions
     
     def add_subscription(self, sub_info: Dict):
-        if not has_keys(sub_info, ["msg_type", "var_name", "topic", "callback", "callback_arg_type", "qos"]):
+        if not has_keys(sub_info, ["msg_type", "var_name", "topic", "callback", "qos"]):
+            return
+        if not ("callback_arg_type" in sub_info.keys() or "cpp_type" in sub_info.keys()):
             return
         if self.is_name_busy(sub_info["var_name"]):
             return

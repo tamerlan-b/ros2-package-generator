@@ -38,6 +38,7 @@ namespace {{ node_ns }}
     rclcpp::PublisherOptions {{ pub.var_name }}_opts;
     {{ pub.var_name }}_opts.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
     {% endif %}
+    {% block pub_init scoped %}
     this->{{ pub.var_name }} = this->create_publisher<{{ pub.msg_type }}>(
         "{{ pub.topic }}", 
         {{ generate_qos_expression(pub.qos) }}
@@ -45,6 +46,7 @@ namespace {{ node_ns }}
         , {{ pub.var_name }}_opts
         {% endif %}
     );
+    {% endblock %}
     {% endfor %}
     
     {% if subscribers %}
@@ -55,6 +57,7 @@ namespace {{ node_ns }}
     rclcpp::SubscriptionOptions {{ sub.var_name }}_opts{};
     {{ sub.var_name }}_opts.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
     {% endif %}
+    {% block sub_init scoped %}
     this->{{ sub.var_name }} = this->create_subscription<{{ sub.msg_type }}>(
         "{{ sub.topic }}", 
         {{ generate_qos_expression(sub.qos) }}, 
@@ -63,6 +66,7 @@ namespace {{ node_ns }}
         , {{ sub.var_name }}_opts
         {% endif %}
     );
+    {% endblock %}
     {% endfor %}
 
     {% if timers %}
@@ -140,10 +144,12 @@ namespace {{ node_ns }}
 }
 
 {% for sub in subscribers %}
+{% block sub_cb_init scoped%}
 void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg)
 {
     // TODO: add implementation
 }
+{% endblock %}
 {% endfor %}
 
 {% for tim in timers %}

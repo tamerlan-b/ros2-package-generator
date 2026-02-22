@@ -102,11 +102,20 @@ def get_pub_sub_info(prior_info: Dict={}) -> Dict:
 def add_subscriber():
     sub_info = get_pub_sub_info()
     sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback")
-    callback_arg_type = st.radio("Callback argument type", ["Object", "UniquePtr", "SharedPtr", "ConstSharedPtr"], index=2, horizontal=True)
-    cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
-    sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-    type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
-    st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
+    
+    enable_type_adapter = False
+    if st.session_state["gen"]["ros_distro"] >= "Humble":
+        enable_type_adapter = st.checkbox("Use Type Adapter", False)
+    if enable_type_adapter:
+        sub_info["cpp_type"] = st.text_input("C++ type for conversion")
+        sub_info["adapter_name"] = st.text_input("Adapter typename")
+        st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
+    else:
+        callback_arg_type = st.radio("Callback argument type", ["Object", "UniquePtr", "SharedPtr", "ConstSharedPtr"], index=2, horizontal=True)
+        cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
+        sub_info["callback_arg_type"] = cb_types[callback_arg_type]
+        type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
+        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos()
     
@@ -117,6 +126,12 @@ def add_subscriber():
 @st.dialog("Add Publisher")
 def add_publisher():
     pub_info = get_pub_sub_info()
+    enable_type_adapter = False
+    if st.session_state["gen"]["ros_distro"] >= "Humble":
+        enable_type_adapter = st.checkbox("Use Type Adapter", False)
+    if enable_type_adapter:
+        pub_info["cpp_type"] = st.text_input("C++ type for conversion")
+        pub_info["adapter_name"] = st.text_input("Adapter typename")
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos()
     if st.button("Submit"):
@@ -279,6 +294,12 @@ def add_sync_sub():
 def edit_publisher(pub_var_name: str):
     editing_pub, index = st.session_state['gen'].get_publisher(pub_var_name)
     pub_info = get_pub_sub_info(editing_pub)
+    enable_type_adapter = False
+    if st.session_state["gen"]["ros_distro"] >= "Humble":
+        enable_type_adapter = st.checkbox("Use Type Adapter", editing_pub.get("adapter_name", False))
+    if enable_type_adapter:
+        pub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_pub.get("cpp_type", ""))
+        pub_info["adapter_name"] = st.text_input("Adapter typename", editing_pub.get("adapter_name", ""))
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos(editing_pub["qos"])
     if st.button("Apply"):
@@ -289,13 +310,22 @@ def edit_publisher(pub_var_name: str):
 def edit_subscriber(sub_var_name: str):
     editing_sub, index = st.session_state['gen'].get_subscription(sub_var_name)
     sub_info = get_pub_sub_info(editing_sub)
-    
     sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback", value= "" if editing_sub == {} or 'callback' not in editing_sub.keys() else editing_sub["callback"])
-    cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
-    callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=2 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
-    sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-    type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
-    st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
+    
+    enable_type_adapter = False
+    if st.session_state["gen"]["ros_distro"] >= "Humble":
+        enable_type_adapter = st.checkbox("Use Type Adapter", editing_sub.get("adapter_name", False))
+    
+    if enable_type_adapter:
+        sub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_sub.get("cpp_type", ""))
+        sub_info["adapter_name"] = st.text_input("Adapter typename", editing_sub.get("adapter_name", ""))
+        st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
+    else:    
+        cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
+        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=2 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
+        sub_info["callback_arg_type"] = cb_types[callback_arg_type]
+        type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
+        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos(editing_sub["qos"])
     
@@ -490,7 +520,7 @@ with st.sidebar:
         st.session_state["gen"].add_action_client({"srv_name": "fibonacci", "var_name": "action_client_", "type": "tf2_msgs::action::LookupTransform", "goal_response_callback": "goal_response_cb", "feedback_callback": "feedback_response_cb", "result_callback": "result_response_cb"})
 
     # TODO: Support newer ROS2 distros
-    st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy", "Galactic", "Humble", "Iron", "Jazzy"])
+    st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy", "Galactic", "Humble", "Iron", "Jazzy"], index=2)
     st.session_state['gen']["package_name"] = st.text_input("Package name", "my_package")
     st.session_state['gen']["node_filename"] = st.text_input("Node filename", "my_node")
     st.session_state['gen']["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")

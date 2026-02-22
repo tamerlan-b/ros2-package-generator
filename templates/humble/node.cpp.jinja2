@@ -1,1 +1,36 @@
 {% extends "galactic/node.cpp.jinja2" %}
+{% block pub_init scoped %}
+    {% if pub.adapter_name %}
+    this->{{ pub.var_name }} = this->create_publisher<{{ pub.adapter_name }}>(
+        "{{ pub.topic }}", 
+        {{ generate_qos_expression(pub.qos) }}
+        {% if is_component and pub.qos.is_transient_local %}
+        , {{ pub.var_name }}_opts
+        {% endif %}
+    );
+    {% else %}
+{{ super() }}
+    {% endif %}
+{% endblock %}
+{% block sub_init scoped %}
+    {% if sub.adapter_name %}
+    this->{{ sub.var_name }} = this->create_subscription<{{ sub.adapter_name }}>(
+        {{ sub.topic }}, 
+        {{ generate_qos_expression(sub.qos) }}, 
+        [this](const {{ sub.cpp_type }}& msg){ this->{{ sub.callback }}(msg); }
+    );
+    {% else %}
+{{ super() }}
+    {% endif %}
+{% endblock %}
+
+{% block sub_cb_init scoped%}
+    {% if sub.adapter_name %}
+void {{ node_classname }}::{{ sub.callback }}(const {{ sub.cpp_type }}& msg) const
+{
+    // TODO: add implementation
+}
+    {% else %}
+{{ super() }}
+    {% endif %}
+{% endblock %}
