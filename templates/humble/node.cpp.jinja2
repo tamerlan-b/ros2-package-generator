@@ -15,7 +15,7 @@
 {% block sub_init scoped %}
     {% if sub.adapter_name %}
     this->{{ sub.var_name }} = this->create_subscription<{{ sub.adapter_name }}>(
-        {{ sub.topic }}, 
+        "{{ sub.topic }}", 
         {{ generate_qos_expression(sub.qos) }}, 
         [this](const {{ sub.cpp_type }}& msg){ this->{{ sub.callback }}(msg); }
     );
