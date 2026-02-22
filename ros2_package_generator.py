@@ -111,11 +111,10 @@ def add_subscriber():
         sub_info["adapter_name"] = st.text_input("Adapter typename")
         st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
     else:
-        callback_arg_type = st.radio("Callback argument type", ["Object", "UniquePtr", "SharedPtr", "ConstSharedPtr"], index=2, horizontal=True)
-        cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
+        cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
+        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=0, horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
-        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
+        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos()
     
@@ -320,12 +319,11 @@ def edit_subscriber(sub_var_name: str):
         sub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_sub.get("cpp_type", ""))
         sub_info["adapter_name"] = st.text_input("Adapter typename", editing_sub.get("adapter_name", ""))
         st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
-    else:    
-        cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
-        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=2 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
+    else:
+        cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
+        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        type_suffix = "" if callback_arg_type == "Object" else f"::{callback_arg_type}"
-        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{type_suffix} msg);', language="cpp")
+        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos(editing_sub["qos"])
     
@@ -511,7 +509,7 @@ with st.sidebar:
         st.session_state["gen"]["package_name"] = "my_package"
         st.session_state["gen"]["cmake_target_name"] = "my_library"
         st.session_state["gen"].add_publisher({"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
-        st.session_state["gen"].add_subscription({"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "sptr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].add_subscription({"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "::SharedPtr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
         st.session_state["gen"].add_timer({"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},)
         st.session_state["gen"].add_param({"name": "buffer_size", "type": "int", "default": "10"})
         st.session_state["gen"].add_service({"name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "service", "callback": "service_callback"})

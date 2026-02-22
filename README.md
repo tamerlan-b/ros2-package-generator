@@ -101,7 +101,7 @@ streamlit run ros2_package_generator.py
 | ROS2 Distro | Basic support (code can be compiled) | Extended support (new features) |
 |-|:-:|:-:|
 | galactic | ✅ | ✅ |
-| humble | ✅ | ❌ |
+| humble | ✅ | ✅ |
 | iron | ✅ | ❌ |
 | jazzy | ✅ | ❌ |
 | lyrical | ❌ | ❌ |

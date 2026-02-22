@@ -67,6 +67,7 @@ def has_keys(dictionary, keys):
 #############
 
 class Ros2PkgGenerator:
+    
     def __init__(self, config = {}):
         
         if config != {}:
@@ -108,8 +109,13 @@ class Ros2PkgGenerator:
                 'xml': self.env.get_template(f'{distro}/package.xml.jinja2'),
                 'cmake': self.env.get_template(f'{distro}/CMakeLists.txt.jinja2'),
             }
-        
-        self.cb_types = {"Object": "obj", "UniquePtr": "uptr", "SharedPtr": "sptr", "ConstSharedPtr": "csptr"}
+    
+    def get_callback_types(self, ros_distro: str) -> Dict:
+        if ros_distro.lower() < 'humble':
+            return {"Object": "", "UniquePtr": "::UniquePtr", "SharedPtr": "::SharedPtr", "ConstSharedPtr": "::ConstSharedPtr"}
+        else:
+            return {"Object": "", "Reference": "&", "UniquePtr": "::UniquePtr", "SharedPtr": "::SharedPtr", "ConstSharedPtr": "::ConstSharedPtr"}
+    
     
     def __getitem__(self, key):
         return self.config[key]

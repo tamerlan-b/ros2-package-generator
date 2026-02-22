@@ -14,7 +14,6 @@ using namespace std::chrono_literals;
 namespace {{ node_ns }}
 {
 {% endif %}
-{% set suffixes = {'obj': '', 'uptr': '::UniquePtr', 'sptr': '::SharedPtr', 'csptr': '::ConstSharedPtr'} %}
 
 {{ node_classname }}::{{ node_classname }}({% if is_component %}const rclcpp::NodeOptions& options{% endif %}): Node("{{ node_name }}"{% if is_component %}, options{% endif %})
 {
@@ -61,7 +60,7 @@ namespace {{ node_ns }}
     this->{{ sub.var_name }} = this->create_subscription<{{ sub.msg_type }}>(
         "{{ sub.topic }}", 
         {{ generate_qos_expression(sub.qos) }}, 
-        [&]({{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg) { this->{{ sub.callback }}(std::move(msg)); }
+        [&]({{ sub.msg_type }}{{ sub.callback_arg_type }} msg) { this->{{ sub.callback }}(std::move(msg)); }
         {% if is_component and sub.qos.is_transient_local %}
         , {{ sub.var_name }}_opts
         {% endif %}
@@ -145,7 +144,7 @@ namespace {{ node_ns }}
 
 {% for sub in subscribers %}
 {% block sub_cb_init scoped%}
-void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ suffixes[sub.callback_arg_type] }} msg)
+void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ sub.callback_arg_type }} msg)
 {
     // TODO: add implementation
 }
