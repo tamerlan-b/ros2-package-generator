@@ -138,7 +138,8 @@ namespace {{ node_ns }}
         {% endfor %}
     );
     this->{{ sync_subscribers[i].var_name }}->registerCallback(
-    std::bind(&{{ node_classname }}::{{ sync_subscribers[i].callback }}, this, {% for i in range(sync_subscribers[i].subs|length) %}_{{ i+1 }}{% if not loop.last %},{% endif %} {% endfor %}));
+        std::bind(&{{ node_classname }}::{{ sync_subscribers[i].callback }}, this, {% for i in range(sync_subscribers[i].subs|length) %}_{{ i+1 }}{% if not loop.last %},{% endif %}{% endfor %})
+    );
     {% endfor %}
 }
 
