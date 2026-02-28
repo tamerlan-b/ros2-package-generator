@@ -91,7 +91,8 @@ class Ros2PkgGenerator:
                 'action_clients': [],
                 'sync_subscribers': [],
                 "package_name": "my_package",
-                "cmake_target_name": "my_library"
+                "cmake_target_name": "my_library",
+                "ros_distro": "Foxy"
             }
         
         self.env = jinja2.Environment(
@@ -456,6 +457,7 @@ class Ros2PkgGenerator:
     def generate_files(self):
         self.__update_includes()
         self.config["advertisement"] = "The package was created using ros2-package-generator: https://ros2-package-generator.onrender.com/"
+        distro = self.config.get("ros_distro", "Foxy").lower()
         # print(distro)
         return {
             f'{self.config["node_filename"]}.hpp': self.templates[distro]['hpp'].render(**self.config), 

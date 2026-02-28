@@ -526,7 +526,7 @@ with st.sidebar:
         st.session_state["gen"].add_action_client({"srv_name": "fibonacci", "var_name": "action_client_", "type": "tf2_msgs::action::LookupTransform", "goal_response_callback": "goal_response_cb", "feedback_callback": "feedback_response_cb", "result_callback": "result_response_cb"})
 
     # TODO: Support newer ROS2 distros
-    st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy", "Galactic", "Humble", "Iron", "Jazzy"], index=2)
+    st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy", "Galactic", "Humble", "Iron", "Jazzy"], index=0)
     st.session_state['gen']["package_name"] = st.text_input("Package name", "my_package")
     st.session_state['gen']["node_filename"] = st.text_input("Node filename", "my_node")
     st.session_state['gen']["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")
