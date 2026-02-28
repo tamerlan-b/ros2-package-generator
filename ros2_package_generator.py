@@ -502,6 +502,8 @@ def edit_sync_sub(sync_sub_var_name: str):
 
 with st.sidebar:
     
+    st.link_button("View in Github", "https://github.com/tamerlan-b/ros2-package-generator.git", icon=':material/folder_code:')
+    
     st.session_state['view'] = st.radio("Page view", ["Desktop", "Mobile"], horizontal=True)
     
     # TODO: Remove button later
