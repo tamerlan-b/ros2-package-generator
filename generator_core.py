@@ -455,9 +455,7 @@ class Ros2PkgGenerator:
     
     def generate_files(self):
         self.__update_includes()
-        # TODO: Update ad
-        self.config["advertisement"] = "The package was created using ros2-package-generator: https://github.com/tamerlan-b/ros2-package-generator.git"
-        distro = self.config.get("ros_distro", "Foxy").lower()
+        self.config["advertisement"] = "The package was created using ros2-package-generator: https://ros2-package-generator.onrender.com/"
         # print(distro)
         return {
             f'{self.config["node_filename"]}.hpp': self.templates[distro]['hpp'].render(**self.config), 
