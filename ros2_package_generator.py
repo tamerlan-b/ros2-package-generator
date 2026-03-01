@@ -251,7 +251,6 @@ def add_action_client():
 def __add_sync_sub():
     num_max_subs = 9
     sync_sub_info = {}
-    sync_sub_info["var_name"] = st.text_input("Variable name")
     sync_sub_info["callback"] = st.text_input("Synchronized callback function name")
     policies = ["ExactTime", "ApproximateTime"]
     # TODO: in message_filters for humble there are "approximate_epsilon_time.hpp", but there are no "approximate_epsilon_time.h"
@@ -454,11 +453,10 @@ def edit_action_client(action_client_var_name: str):
         st.rerun()
 
 @st.dialog("Edit synchronized subscriber")
-def __edit_sync_sub(sync_sub_var_name: str):
-    editing_sync_sub, index = st.session_state['gen'].get_sync_subscription(sync_sub_var_name)
+def __edit_sync_sub(sync_cb_name: str):
+    editing_sync_sub, index = st.session_state['gen'].get_sync_subscription(sync_cb_name)
     num_max_subs = 9
     sync_sub_info = {}
-    sync_sub_info["var_name"] = st.text_input("Variable name", value=editing_sync_sub.get("var_name", ""))
     sync_sub_info["callback"] = st.text_input("Synchronized callback function name", value=editing_sync_sub.get("callback", ""))
     sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"])
     sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1, value=editing_sync_sub.get("queue_size", 1))
@@ -630,8 +628,8 @@ with col_elems:
             
             text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscriber", on_click=lambda: add_sync_sub())
             for sync_sub in st.session_state['gen']["sync_subscribers"]:
-                var_name = sync_sub["var_name"]
-                checkboxes['sync_sub'][var_name] = checkboxes_with_button(f'`{var_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_sync_sub(var))
+                cb_name = sync_sub["callback"]
+                checkboxes['sync_sub'][cb_name] = checkboxes_with_button(f'`{cb_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=cb_name, on_click=lambda var=cb_name: edit_sync_sub(var))
             
             # Remove selected items
             if st.button("Remove selected items 🗑️", type="primary"):

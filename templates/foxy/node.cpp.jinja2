@@ -131,13 +131,13 @@ namespace {{ node_ns }}
     rclcpp::QoS {{ sub.var_name }}_qos(4);
     this->{{ sub.var_name }} = std::make_shared<message_filters::Subscriber<{{ sub.msg_type }}>>(this, "{{ sub.topic }}", {{ sub.var_name }}_qos.get_rmw_qos_profile());
         {% endfor %}
-    this->{{ sync_subscribers[i].var_name }} = std::make_shared<message_filters::Synchronizer<SyncPolicy{{ i+1 }}_t>>(
+    this->sync_{{ i+1 }} = std::make_shared<message_filters::Synchronizer<SyncPolicy{{ i+1 }}_t>>(
         SyncPolicy{{ i+1 }}_t({{ sync_subscribers[i].queue_size }}{% if sync_subscribers[i].sync_policy == 'ApproximateEpsilonTime' %}, rclcpp::Duration::from_seconds({{ sync_subscribers[i].epsilon }} * 0.001){% endif %}), 
         {% for j in range(sync_subscribers[i].subs|length) %}
         *{{ sync_subscribers[i].subs[j].var_name }}{% if not loop.last %},{% endif %} 
         {% endfor %}
     );
-    this->{{ sync_subscribers[i].var_name }}->registerCallback(
+    this->sync_{{ i+1 }}->registerCallback(
         std::bind(&{{ node_classname }}::{{ sync_subscribers[i].callback }}, this, {% for i in range(sync_subscribers[i].subs|length) %}_{{ i+1 }}{% if not loop.last %},{% endif %}{% endfor %})
     );
     {% endfor %}

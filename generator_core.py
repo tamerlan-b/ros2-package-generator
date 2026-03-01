@@ -200,16 +200,16 @@ class Ros2PkgGenerator:
         self.config['include_pkgs'] = deps
         self.config['includes'] = includes
     
-    def remove_item(self, var_name: str, dict_name: str):
-        index = next([i for i, item in enumerate(self.config[dict_name]) if item["var_name"] == var_name], -1)
+    def remove_item(self, unique_value: str, dict_name: str, id_key: str = 'var_name'):
+        index = next([i for i, item in enumerate(self.config[dict_name]) if item[id_key] == unique_value], -1)
         if index >= 0:
             del self.config[dict_name][index]
     
-    def remove_items(self, var_name: List[str], dict_name: str):
-        self.config[dict_name] = [item for item in self.config[dict_name] if item["var_name"] not in var_name]
+    def remove_items(self, unique_value: List[str], dict_name: str, id_key: str = 'var_name'):
+        self.config[dict_name] = [item for item in self.config[dict_name] if item[id_key] not in unique_value]
     
-    def get_item(self, var_name: str, dict_name: str):
-        index = next(iter([i for i, item in enumerate(self.config[dict_name]) if item["var_name"] == var_name]), -1)
+    def get_item(self, unique_value: str, dict_name: str, id_key: str = 'var_name'):
+        index = next(iter([i for i, item in enumerate(self.config[dict_name]) if item[id_key] == unique_value]), -1)
         return (None if index < 0 else self.config[dict_name][index], index)
     
     def update_item(self, item_info: Dict, index: int, dict_name: str, add_method = None):
@@ -304,16 +304,13 @@ class Ros2PkgGenerator:
         self.config["params"].append(param_info)
     
     def remove_param(self, param_name: str):
-        index = next([i for i, p in enumerate(self.config["params"]) if p["name"] == param_name], -1)
-        if index >= 0:
-            del self.config["params"][index]
+        self.remove_item(param_name, "params", "name")
     
     def remove_params(self, param_names: List[str]):
-        self.config["params"] = [p for p in self.config["params"] if p["name"] not in param_names]
+        self.remove_items(param_names, "params", "name")
     
     def get_param(self, param_name: str) -> Tuple[dict, int]:
-        index = next(iter([i for i, p in enumerate(self.config["params"]) if p["name"] == param_name]), -1)
-        return (None if index < 0 else self.config["params"][index], index)
+        return self.get_item(param_name, "params", "name")
     
     def update_param(self, param_info: Dict, index: int):
         self.update_item(param_info, index, "params", self.add_param)
@@ -427,9 +424,9 @@ class Ros2PkgGenerator:
     # Synchronized subscriptions (message filters)
     
     def add_sync_subscription(self, sync_sub_info: Dict):
-        if not has_keys(sync_sub_info, ["var_name", "callback", "sync_policy", "queue_size", "subs"]):
+        if not has_keys(sync_sub_info, ["callback", "sync_policy", "queue_size", "subs"]):
             return
-        if self.is_name_busy(sync_sub_info["var_name"]):
+        if self.is_name_busy(sync_sub_info["callback"]):
             return
         
         for s in sync_sub_info["subs"]:
@@ -442,14 +439,14 @@ class Ros2PkgGenerator:
             self.config["sync_subscribers"] = []
         self.config["sync_subscribers"].append(sync_sub_info)
     
-    def remove_sync_subscription(self, sync_sub_var_name: str):
-        self.remove_item(sync_sub_var_name, "sync_subscribers")
+    def remove_sync_subscription(self, sync_cb_name: str):
+        self.remove_item(sync_cb_name, "sync_subscribers", "callback")
     
-    def remove_sync_subscriptions(self, sync_sub_var_names: List[str]):
-        self.remove_items(sync_sub_var_names, "sync_subscribers")
+    def remove_sync_subscriptions(self, sync_cb_names: List[str]):
+        self.remove_items(sync_cb_names, "sync_subscribers", "callback")
     
-    def get_sync_subscription(self, sync_sub_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(sync_sub_var_name, "sync_subscribers")
+    def get_sync_subscription(self, sync_cb_name: str) -> Tuple[dict, int]:
+        return self.get_item(sync_cb_name, "sync_subscribers", "callback")
     
     def update_sync_subscription(self, sync_sub_info: Dict, index: int):
         self.update_item(sync_sub_info, index, "sync_subscribers", self.add_sync_subscription)

@@ -87,7 +87,7 @@ private:
         {{ sub.msg_type }}{% if not loop.last %},{% endif %} 
         {% endfor %}
         >;
-    std::shared_ptr<message_filters::Synchronizer<SyncPolicy{{ i+1 }}_t>> {{ sync_subscribers[i].var_name }};
+    std::shared_ptr<message_filters::Synchronizer<SyncPolicy{{ i+1 }}_t>> sync_{{ i+1 }};
     void {{ sync_subscribers[i].callback }}(
         {% for j in range(sync_subscribers[i].subs|length) %}
         const {{ sync_subscribers[i].subs[j].msg_type }}::ConstSharedPtr& msg_{{ j+1 }}{% if not loop.last %},{% endif %} 
