@@ -5,7 +5,7 @@ from streamlit_tags import st_tags
 from graphviz import Digraph
 import zipfile
 import io
-from typing import Dict
+from typing import List, Dict, Any
 from generator_core import Ros2PkgGenerator
 
 st.title("ROS2 Package Generator")
@@ -83,13 +83,23 @@ def add_qos(prior_qos: Dict = {}) -> Dict:
     qos["is_default"] = is_default_qos(qos, default_qos)
     return qos
 
+def st_select(label: str, options: List = [], value: Any = None, maxtags: int = -1, placeholder: str = None, key: str = None):
+    return st_tags(
+        label=label,
+        text=placeholder,
+        value=value,
+        suggestions=options,
+        maxtags=maxtags,
+        key=key
+    )    
+
 def get_pub_sub_info(prior_info: Dict={}) -> Dict:
     info = {}
-    tags = st_tags(
+    tags = st_select(
         label='Message type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[] if 'msg_type' not in prior_info else [prior_info["msg_type"]],
-        suggestions=st.session_state['autocompletes']['msg'],
+        options=st.session_state['autocompletes']['msg'],
         maxtags=1,
         key="msgs_tags"
     )
@@ -165,11 +175,11 @@ def add_timer():
 def add_service():
     srv_info = {}
     srv_info["name"] = st.text_input("Service name")
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[],
-        suggestions=st.session_state['autocompletes']['srv'],
+        options=st.session_state['autocompletes']['srv'],
         maxtags=1,
         key="srvs_tags"
     )
@@ -186,11 +196,11 @@ def add_service():
 def add_client():
     client_info = {}
     client_info["srv_name"] = st.text_input("Service name")
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[],
-        suggestions=st.session_state['autocompletes']['srv'],
+        options=st.session_state['autocompletes']['srv'],
         maxtags=1,
         key="srvs_tags"
     )
@@ -204,11 +214,11 @@ def add_client():
 def add_action_server():
     action_srv_info = {}
     action_srv_info["name"] = st.text_input("Action name")
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[],
-        suggestions=st.session_state['autocompletes']['action'],
+        options=st.session_state['autocompletes']['action'],
         maxtags=1,
         key="actions_tags"
     )
@@ -228,11 +238,11 @@ def add_action_server():
 def add_action_client():
     action_client_info = {}
     action_client_info["srv_name"] = st.text_input("Action name")
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[],
-        suggestions=st.session_state['autocompletes']['action'],
+        options=st.session_state['autocompletes']['action'],
         maxtags=1,
         key="actions_tags"
     )
@@ -366,11 +376,11 @@ def edit_service(srv_var_name: str):
     editing_srv, index = st.session_state['gen'].get_service(srv_var_name)
     srv_info = {}
     srv_info["name"] = st.text_input("Service name", value=editing_srv.get("name", ""))        
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[] if 'type' not in editing_srv else [editing_srv["type"]],
-        suggestions=st.session_state['autocompletes']['srv'],
+        options=st.session_state['autocompletes']['srv'],
         maxtags=1,
         key="srvs_tags"
     )
@@ -389,11 +399,11 @@ def edit_client(client_var_name: str):
     editing_client, index = st.session_state['gen'].get_client(client_var_name)
     client_info = {}
     client_info["srv_name"] = st.text_input("Service name", value=editing_client.get("srv_name", ""))
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[] if 'type' not in editing_client else [editing_client["type"]],
-        suggestions=st.session_state['autocompletes']['srv'],
+        options=st.session_state['autocompletes']['srv'],
         maxtags=1,
         key="srvs_tags"
     )
@@ -408,11 +418,11 @@ def edit_action_server(action_srv_var_name: str):
     editing_action_srv, index = st.session_state['gen'].get_action_server(action_srv_var_name)
     action_srv_info = {}
     action_srv_info["name"] = st.text_input("Action name", value=editing_action_srv.get("name", ""))
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[] if 'type' not in editing_action_srv else [editing_action_srv["type"]],
-        suggestions=st.session_state['autocompletes']['action'],
+        options=st.session_state['autocompletes']['action'],
         maxtags=1,
         key="actions_tags"
     )
@@ -433,11 +443,11 @@ def edit_action_client(action_client_var_name: str):
     editing_action_client, index = st.session_state['gen'].get_action_client(action_client_var_name)
     action_client_info = {}
     action_client_info["srv_name"] = st.text_input("Action name", value=editing_action_client.get("srv_name", ""))
-    tags = st_tags(
+    tags = st_select(
         label='Type',
-        text='Press Enter to add',
+        placeholder='Press Enter to add',
         value=[] if 'type' not in editing_action_client else [editing_action_client["type"]],
-        suggestions=st.session_state['autocompletes']['action'],
+        options=st.session_state['autocompletes']['action'],
         maxtags=1,
         key="actions_tags"
     )
