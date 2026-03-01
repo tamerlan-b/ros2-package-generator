@@ -24,12 +24,10 @@ namespace {{ node_ns }}
 {% endif %}
 
 {% block extra_in_namespace %}{% endblock %}
-
 class {{ node_classname }} : public rclcpp::Node
 {
 public:
     {{ node_classname }}({% if is_component %}const rclcpp::NodeOptions & options{% endif %});
-    
 private:
     {% if tf_listener %}
     std::shared_ptr<tf2_ros::Buffer> tf_buffer;

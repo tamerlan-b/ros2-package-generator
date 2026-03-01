@@ -1,14 +1,16 @@
 {% if advertisement %}
 // {{ advertisement }}
 {% endif %}
+
 #include "{{ package_name }}/{{ node_filename }}.hpp"
+{% if action_servers %}
+#include <thread>
+{% endif %}
 {% if timers %}
 #include <chrono>
 using namespace std::chrono_literals;
 {% endif %}
-{% if action_servers %}
-#include <thread>
-{% endif %}
+
 {% from 'foxy/qos_macros.jinja2' import generate_qos_expression %}
 {% if node_ns %}
 namespace {{ node_ns }}
@@ -28,7 +30,6 @@ namespace {{ node_ns }}
     {% for par in params %}
     auto {{ par.name }} = this->declare_parameter<{{ par.type }}>("{{ par.name }}", {{ par.default }});
     {% endfor %}
-    
     {% if publishers %}
     // Publishers
     {% endif %}
@@ -47,7 +48,6 @@ namespace {{ node_ns }}
     );
     {% endblock %}
     {% endfor %}
-    
     {% if subscribers %}
     // Subscribers
     {% endif %}
@@ -67,14 +67,12 @@ namespace {{ node_ns }}
     );
     {% endblock %}
     {% endfor %}
-
     {% if timers %}
     // Timers
     {% endif %}
     {% for tim in timers %}
     this->{{ tim.var_name }} = this->create_wall_timer({{ tim.period }}ms, [&](){ this->{{ tim.callback }}(); });
     {% endfor %}
-
     {% if services %}
     // Services
     {% endif %}
@@ -83,7 +81,6 @@ namespace {{ node_ns }}
       [this](const std::shared_ptr<{{ srv.type }}::Request> request, std::shared_ptr<{{ srv.type }}::Response> response){ this->{{ srv.callback }}(std::move(request), std::move(response)); }
     );
     {% endfor %}
-    
     {% if clients %}
     // Clients
     {% endif %}
@@ -93,7 +90,6 @@ namespace {{ node_ns }}
     {% if clients %}
     // TODO: add waiting for services
     {% endif %}
-
     {% if action_servers %}
     // Action servers
     {% endif %}
@@ -106,7 +102,6 @@ namespace {{ node_ns }}
         [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<{{ action_srv.type }}>> goal_handle){this->{{ action_srv.handle_accepted }}(std::move(goal_handle));}
     );
     {% endfor %}
-
     {% if action_clients %}
     // Action clients
     {% endif %}
@@ -119,7 +114,6 @@ namespace {{ node_ns }}
       std::chrono::milliseconds(500),
       [&](){ this->{{ action_client.var_name }}_once_timer_cb(); });
     {% endfor %}
-    
     {% if sync_subscribers %}
     // Synchronized subscribers (message_filters)
     {% endif %}
@@ -142,7 +136,6 @@ namespace {{ node_ns }}
     );
     {% endfor %}
 }
-
 {% for sub in subscribers %}
 {% block sub_cb_init scoped%}
 void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ sub.callback_arg_type }} msg)
@@ -151,14 +144,12 @@ void {{ node_classname }}::{{ sub.callback }}(const {{ sub.msg_type }}{{ sub.cal
 }
 {% endblock %}
 {% endfor %}
-
 {% for tim in timers %}
 void {{ node_classname }}::{{ tim.callback }}()
 {
     // TODO: add implementation
 }
 {% endfor %}
-
 {% for srv in services %}
 void {{ node_classname }}::{{ srv.callback }}(
   const std::shared_ptr<{{ srv.type }}::Request> request, 
@@ -167,7 +158,6 @@ void {{ node_classname }}::{{ srv.callback }}(
     // TODO: add implementation
 }
 {% endfor %}
-
 {% for action_srv in action_servers %}
 rclcpp_action::GoalResponse {{ node_classname }}::{{ action_srv.handle_goal }}([[maybe_unused]] const rclcpp_action::GoalUUID & uuid, std::shared_ptr<const {{ action_srv.type }}::Goal> goal)
 {
@@ -211,7 +201,6 @@ void {{ node_classname }}::{{ action_srv.execute }}(const std::shared_ptr<rclcpp
     }
 }
 {% endfor %}
-
 {% for action_client in action_clients %}
 void {{ node_classname }}::{{ action_client.var_name }}_once_timer_cb()
 {
@@ -240,7 +229,6 @@ void {{ node_classname }}::{{ action_client.var_name }}_once_timer_cb()
       [this](const GoalHandle_t::WrappedResult & result){this->{{ action_client.result_callback }}(std::move(result));};
     this->{{ action_client.var_name }}->async_send_goal(goal_msg, goal_options);
 }
-
 {% block goal_response_callback_def scoped %}
 void {{ node_classname }}::{{ action_client.goal_response_callback }}(std::shared_future<rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr> future)
 {
@@ -281,7 +269,6 @@ void {{ node_classname }}::{{ action_client.result_callback }}(const rclcpp_acti
     }
 }
 {% endfor %}
-
 {% for sync_subs in  sync_subscribers %}
 void {{ node_classname }}::{{ sync_subs.callback }}(
   {% for i in range(sync_subs.subs|length) %}
