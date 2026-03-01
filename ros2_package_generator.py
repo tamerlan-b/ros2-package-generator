@@ -152,14 +152,14 @@ def add_parameter():
     param_info = {}
     param_info["name"] = st.text_input("Name")        
     param_info["type"] = st.selectbox("Type", options=st.session_state['autocompletes']['params'])
-    
     param_info["default"] = st.text_input("Default value")
-    if param_info["default"] == "":
-        st.error("You should enter default value")
     
     if st.button("Submit"):
-        st.session_state['gen'].add_param(param_info)
-        st.rerun()
+        if param_info["default"] == "":
+            st.error("You should enter default value")
+        else:
+            st.session_state['gen'].add_param(param_info)
+            st.rerun()
 
 @st.dialog("Add Timer")
 def add_timer():
