@@ -129,8 +129,12 @@ def add_subscriber():
         sub_info["qos"] = add_qos()
     
     if st.button("Submit"):
-        st.session_state['gen'].add_subscription(sub_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_subscription(sub_info)
+        if res:
+            st.session_state['gen'].add_subscription(sub_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Publisher")
 def add_publisher():
@@ -144,22 +148,27 @@ def add_publisher():
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos()
     if st.button("Submit"):
-        st.session_state['gen'].add_publisher(pub_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_publisher(pub_info)
+        if res:
+            st.session_state['gen'].add_publisher(pub_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Parameter")
 def add_parameter():
     param_info = {}
-    param_info["name"] = st.text_input("Name")        
+    param_info["name"] = st.text_input("Name")
     param_info["type"] = st.selectbox("Type", options=st.session_state['autocompletes']['params'])
     param_info["default"] = st.text_input("Default value")
     
     if st.button("Submit"):
-        if param_info["default"] == "":
-            st.error("You should enter default value")
-        else:
+        res, error_str = st.session_state['gen'].validate_param(param_info)
+        if res:
             st.session_state['gen'].add_param(param_info)
             st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Timer")
 def add_timer():
@@ -168,8 +177,12 @@ def add_timer():
     timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1)
     timer_info["callback"] = st.text_input("Callback function name")
     if st.button("Submit"):
-        st.session_state['gen'].add_timer(timer_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_timer(timer_info)
+        if res:
+            st.session_state['gen'].add_timer(timer_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Service server")
 def add_service():
@@ -189,8 +202,12 @@ def add_service():
     st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
     
     if st.button("Submit"):
-        st.session_state['gen'].add_service(srv_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_service(srv_info)
+        if res:
+            st.session_state['gen'].add_service(srv_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Service client")
 def add_client():
@@ -207,8 +224,12 @@ def add_client():
     client_info["type"] = None if len(tags) == 0 else tags[0]
     client_info["var_name"] = st.text_input("Variable name", placeholder="client")
     if st.button("Submit"):
-        st.session_state['gen'].add_client(client_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_client(client_info)
+        if res:
+            st.session_state['gen'].add_client(client_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Action server")
 def add_action_server():
@@ -231,8 +252,12 @@ def add_action_server():
     action_srv_info["execute"] = st.text_input("Goal execute method name", placeholder="execute")
     
     if st.button("Submit"):
-        st.session_state['gen'].add_action_server(action_srv_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_action_server(action_srv_info)
+        if res:
+            st.session_state['gen'].add_action_server(action_srv_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add Action client")
 def add_action_client():
@@ -254,8 +279,12 @@ def add_action_client():
     action_client_info["result_callback"] = st.text_input("Result callback name", placeholder="result_response_cb")
     
     if st.button("Submit"):
-        st.session_state['gen'].add_action_client(action_client_info)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_action_client(action_client_info)
+        if res:
+            st.session_state['gen'].add_action_client(action_client_info)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Add synchronized subscriber")
 def __add_sync_sub():
@@ -317,8 +346,12 @@ def edit_publisher(pub_var_name: str):
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos(editing_pub["qos"])
     if st.button("Apply"):
-        st.session_state['gen'].update_publisher(pub_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_publisher(pub_info, True)
+        if res:
+            st.session_state['gen'].update_publisher(pub_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Subscriber")
 def edit_subscriber(sub_var_name: str):
@@ -343,8 +376,12 @@ def edit_subscriber(sub_var_name: str):
         sub_info["qos"] = add_qos(editing_sub["qos"])
     
     if st.button("Apply"):
-        st.session_state['gen'].update_subscription(sub_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_subscription(sub_info, True)
+        if res:
+            st.session_state['gen'].update_subscription(sub_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Parameter")
 def edit_parameter(param_name: str):
@@ -357,8 +394,12 @@ def edit_parameter(param_name: str):
         st.error("You should enter default value")
     
     if st.button("Submit"):
-        st.session_state['gen'].update_param(param_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_param(param_info, True)
+        if res:
+            st.session_state['gen'].update_param(param_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Timer")
 def edit_timer(timer_var_name: str):
@@ -368,8 +409,12 @@ def edit_timer(timer_var_name: str):
     timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1, value=editing_timer.get("period", ""))
     timer_info["callback"] = st.text_input("Callback function name", value=editing_timer.get("callback", ""))
     if st.button("Submit"):
-        st.session_state['gen'].update_timer(timer_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_timer(timer_info, True)
+        if res:
+            st.session_state['gen'].update_timer(timer_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Service server")
 def edit_service(srv_var_name: str):
@@ -391,8 +436,12 @@ def edit_service(srv_var_name: str):
     st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
     
     if st.button("Submit"):
-        st.session_state['gen'].update_service(srv_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_service(srv_info, True)
+        if res:
+            st.session_state['gen'].update_service(srv_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Service client")
 def edit_client(client_var_name: str):
@@ -410,8 +459,12 @@ def edit_client(client_var_name: str):
     client_info["type"] = None if len(tags) == 0 else tags[0]
     client_info["var_name"] = st.text_input("Variable name", value=editing_client.get("var_name", ""))
     if st.button("Submit"):
-        st.session_state['gen'].update_client(client_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_client(client_info, True)
+        if res:
+            st.session_state['gen'].update_client(client_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Action server")
 def edit_action_server(action_srv_var_name: str):
@@ -435,8 +488,12 @@ def edit_action_server(action_srv_var_name: str):
     action_srv_info["execute"] = st.text_input("Goal execute method name", value=editing_action_srv.get("execute", ""))
     
     if st.button("Submit"):
-        st.session_state['gen'].update_action_server(action_srv_info, index)
-        st.rerun()
+        res, error_str = st.session_state['gen'].validate_action_server(action_srv_info, True)
+        if res:
+            st.session_state['gen'].update_action_server(action_srv_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit Action client")
 def edit_action_client(action_client_var_name: str):
@@ -459,8 +516,13 @@ def edit_action_client(action_client_var_name: str):
     action_client_info["result_callback"] = st.text_input("Result callback name", value=editing_action_client.get("result_callback", ""))
     
     if st.button("Submit"):
-        st.session_state['gen'].update_action_client(action_client_info, index)
-        st.rerun()
+        st.write(action_client_info)
+        res, error_str = st.session_state['gen'].validate_action_client(action_client_info, True)
+        if res:
+            st.session_state['gen'].update_action_client(action_client_info, index)
+            st.rerun()
+        else:
+            st.error(error_str)
 
 @st.dialog("Edit synchronized subscriber")
 def __edit_sync_sub(sync_cb_name: str):

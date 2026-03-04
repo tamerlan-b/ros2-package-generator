@@ -246,6 +246,23 @@ class Ros2PkgGenerator:
     def update_subscription(self, sub_info: Dict, index: int):
         self.update_item(sub_info, index, "subscribers", self.add_subscription)
     
+    def validate_subscription(self, sub_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if sub_info.get("msg_type", None) == None:
+            return False, "Message type is empty"
+        if sub_info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if sub_info.get("topic", "") == "":
+            return False, "Topic name is empty"
+        if sub_info.get("callback", "") == "":
+            return False, "Callback method name is empty"
+        if sub_info.get("qos", {}) == {}:
+            return False, "QoS is empty"
+        if "cpp_type" in sub_info.keys() and sub_info["cpp_type"] == "":
+            return False, "C++ is empty"
+        if not skip_name and self.is_name_busy(sub_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
+    
     # Publishers
     
     def add_publisher(self, pub_info: Dict):
@@ -273,6 +290,19 @@ class Ros2PkgGenerator:
     def update_publisher(self, pub_info: Dict, index: int):
         self.update_item(pub_info, index, "publishers", self.add_publisher)
     
+    def validate_publisher(self, pub_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if pub_info.get("msg_type", None) == None:
+            return False, "Message type is empty"
+        if pub_info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if pub_info.get("topic", "") == "":
+            return False, "Topic name is empty"
+        if pub_info.get("qos", {}) == {}:
+            return False, "QoS is empty"
+        if not skip_name and self.is_name_busy(pub_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
+    
     # Timers
     
     def add_timer(self, timer_info: Dict):
@@ -294,6 +324,15 @@ class Ros2PkgGenerator:
     def update_timer(self, timer_info: Dict, index: int):
         self.update_item(timer_info, index, "timers", self.add_timer)
     
+    def validate_timer(self, timer_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if timer_info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if timer_info.get("callback", "") == "":
+            return False, "Callback method name is empty"
+        if not skip_name and self.is_name_busy(timer_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
+    
     # Params
     
     def add_param(self, param_info: Dict):
@@ -314,6 +353,15 @@ class Ros2PkgGenerator:
     
     def update_param(self, param_info: Dict, index: int):
         self.update_item(param_info, index, "params", self.add_param)
+    
+    def validate_param(self, param_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if param_info.get("name", "") == "":
+            return False, "Param name is empty"
+        if param_info.get("type", None) == None:
+            return False, "Param type is empty"
+        if param_info.get("default", None) == None:
+            return False, "Default value is empty"
+        return True, ""
     
     # Service servers
     
@@ -342,6 +390,19 @@ class Ros2PkgGenerator:
     def update_service(self, srv_info: Dict, index: int):
         self.update_item(srv_info, index, "services", self.add_service)
     
+    def validate_service(self, srv_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if srv_info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if srv_info.get("type", None) == None:
+            return False, "Service type is empty"
+        if srv_info.get("name", "") == "":
+            return False, "Service name is empty"
+        if srv_info.get("callback", "") == "":
+            return False, "Service callback is empty"
+        if not skip_name and self.is_name_busy(srv_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
+    
     # Service clients
     
     def add_client(self, client_info: Dict):
@@ -369,6 +430,17 @@ class Ros2PkgGenerator:
     def update_client(self, client_info: Dict, index: int):
         self.update_item(client_info, index, "clients", self.add_client)
     
+    def validate_client(self, client_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if client_info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if client_info.get("type", None) == None:
+            return False, "Service type is empty"
+        if client_info.get("srv_name", "") == "":
+            return False, "Service name is empty"
+        if not skip_name and self.is_name_busy(client_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
+
     # Action servers
     
     def add_action_server(self, action_srv_info: Dict):
@@ -395,6 +467,25 @@ class Ros2PkgGenerator:
     def update_action_server(self, action_srv_info: Dict, index: int):
         self.update_item(action_srv_info, index, "action_servers", self.add_action_server)
     
+    def validate_action_server(self, action_srv_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if action_srv_info.get("name", "") == "":
+            return False, "Action name is empty"
+        if action_srv_info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if action_srv_info.get("type", None) == None:
+            return False, "Action type is empty"
+        if action_srv_info.get("handle_goal", "") == "":
+            return False, "Handle goal method name is empty"
+        if action_srv_info.get("handle_cancel", "") == "":
+            return False, "Handle cancel method name is empty"
+        if action_srv_info.get("handle_accepted", "") == "":
+            return False, "Handle accepted method name is empty"
+        if action_srv_info.get("execute", "") == "":
+            return False, "Execute method name is empty"
+        if not skip_name and self.is_name_busy(action_srv_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
+
     # Action clients
     
     def add_action_client(self, action_client_info: Dict):
@@ -420,6 +511,23 @@ class Ros2PkgGenerator:
     
     def update_action_client(self, action_client_info: Dict, index: int):
         self.update_item(action_client_info, index, "action_clients", self.add_action_client)
+    
+    def validate_action_client(self, action_client_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if action_client_info.get("srv_name", "") == "":
+            return False, "Action server name is empty"
+        if action_client_info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if action_client_info.get("type", None) == None:
+            return False, "Action type is empty"
+        if action_client_info.get("goal_response_callback", "") == "":
+            return False, "Goal response callback name is empty"
+        if action_client_info.get("feedback_callback", "") == "":
+            return False, "Feedback callback name is empty"
+        if action_client_info.get("result_callback", "") == "":
+            return False, "Result callback name is empty"
+        if not skip_name and self.is_name_busy(action_client_info["var_name"]):
+            return False, "Variable's name is busy"
+        return True, ""
     
     # Synchronized subscriptions (message filters)
     
