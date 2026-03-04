@@ -530,7 +530,7 @@ class Ros2PkgGenerator:
         return True, ""
     
     # Synchronized subscriptions (message filters)
-    
+    # TODO: add validation
     def add_sync_subscription(self, sync_sub_info: Dict):
         if not has_keys(sync_sub_info, ["callback", "sync_policy", "queue_size", "subs"]):
             return
