@@ -36,7 +36,7 @@ def convert_ros_format_generic(ros_type: str) -> Tuple[str, str]:
     # Normalize input
     normalized = ros_type.replace('/', '::')
     
-    # Check for known ROS types
+    # Check for known ROS types 
     for ros_type in ['msg', 'srv', 'action']:
         pattern = f'::{ros_type}::'
         if pattern in normalized:
@@ -65,6 +65,308 @@ def has_keys(dictionary, keys):
     return all(key in dictionary for key in keys)
 
 #############
+
+
+class NodeItemManagerBase:
+    
+    def __init__(self, sub_dict: Dict, unique_key: str = 'var_name'):
+        self.dict = sub_dict
+        self.unique_key = unique_key
+    
+    def __remove_item(self, unique_value: str):
+        index = next([i for i, item in enumerate(self.dict) if item[self.unique_key] == unique_value], -1)
+        if index >= 0:
+            del self.dict[index]
+    
+    def __remove_items(self, unique_value: List[str]):
+        indices = [i for i, item in enumerate(self.dict) if item[self.unique_key] in unique_value]
+        for i in reversed(indices):
+            if i >= 0:
+                del self.dict[i]
+    
+    def __get_item(self, unique_value: str):
+        index = next(iter([i for i, item in enumerate(self.dict) if item[self.unique_key] == unique_value]), -1)
+        return (None if index < 0 else self.dict[index], index)
+    
+    def __update_item(self, item_info: Dict, index: int, add_method = None):
+        if index >= 0 and index < len(self.dict):
+            del self.dict[index]
+            add_method(item_info)
+    
+    def add(self, info: Dict):
+        self.dict.append(info)
+    
+    def remove(self, var_name: str):
+        self.__remove_item(var_name)
+    
+    def remove_many(self, var_names: List[str]):
+        self.__remove_items(var_names)
+    
+    def get(self, var_name: str) -> Tuple[dict, int]:
+        return self.__get_item(var_name)
+    
+    def update(self, info: Dict, index: int):
+        self.__update_item(info, index, self.add)
+    
+    # TODO: make abstract
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        return True, ""
+
+class SubManager(NodeItemManagerBase):
+    def __init__(self, sub_dict: Dict):
+        super().__init__(sub_dict)
+
+    def add(self, info: Dict):
+        if not has_keys(info, ["msg_type", "var_name", "topic", "callback", "qos"]):
+            return
+        if not ("callback_arg_type" in info.keys() or "cpp_type" in info.keys()):
+            return
+        # TODO: add busy_method
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        
+        msg_type_snake, msg_pkg = convert_ros_format_generic(info["msg_type"])
+        msg_include = f"{msg_type_snake}.hpp"
+        info["depends"] = [msg_pkg]
+        info["includes"] = [msg_include]
+        
+        super().add(info)
+    
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("msg_type", None) == None:
+            return False, "Message type is empty"
+        if info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if info.get("topic", "") == "":
+            return False, "Topic name is empty"
+        if info.get("callback", "") == "":
+            return False, "Callback method name is empty"
+        if info.get("qos", {}) == {}:
+            return False, "QoS is empty"
+        if "cpp_type" in info.keys() and info["cpp_type"] == "":
+            return False, "C++ is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class PubManager(NodeItemManagerBase):
+    def __init__(self, pub_dict: Dict):
+        super().__init__(pub_dict)
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["msg_type", "var_name", "topic", "qos"]):
+            return
+        # TODO: return
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        msg_type_snake, msg_pkg = convert_ros_format_generic(info["msg_type"])
+        msg_include = f"{msg_type_snake}.hpp"
+        info["depends"] = [msg_pkg]
+        info["includes"] = [msg_include]
+        
+        super().add(info)
+
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("msg_type", None) == None:
+            return False, "Message type is empty"
+        if info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if info.get("topic", "") == "":
+            return False, "Topic name is empty"
+        if info.get("qos", {}) == {}:
+            return False, "QoS is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class TimerManager(NodeItemManagerBase):
+    def __init__(self, timer_dict: Dict):
+        super().__init__(timer_dict)
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["var_name", "period", "callback"]):
+            return
+        # TODO: return
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        super().add(info)
+
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if info.get("callback", "") == "":
+            return False, "Callback method name is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class ParamManager(NodeItemManagerBase):
+    def __init__(self, timer_dict: Dict):
+        super().__init__(timer_dict, unique_key="name")
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["name", "type", "default"]):
+            return
+        # TODO: return
+        # if any(p["name"] == info["name"] for p in self.config["params"]):
+        #     return
+        super().add(info)
+    
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("name", "") == "":
+            return False, "Param name is empty"
+        if info.get("type", None) == None:
+            return False, "Param type is empty"
+        if info.get("default", None) == None:
+            return False, "Default value is empty"
+        return True, ""
+
+class ServiceManager(NodeItemManagerBase):
+    def __init__(self, service_dict: Dict):
+        super().__init__(service_dict)
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["type", "var_name", "name", "callback"]):
+            return
+        # TODO: check
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        
+        srv_type_snake, srv_pkg = convert_ros_format_generic(info["type"])
+        srv_include = f"{srv_type_snake}.hpp"
+        info["depends"] = [srv_pkg]
+        info["includes"] = [srv_include]
+        super().add(info)
+    
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if info.get("type", None) == None:
+            return False, "Service type is empty"
+        if info.get("name", "") == "":
+            return False, "Service name is empty"
+        if info.get("callback", "") == "":
+            return False, "Service callback is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class ClientManager(NodeItemManagerBase):
+    def __init__(self, client_dict: Dict):
+        super().__init__(client_dict)
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["type", "var_name", "srv_name"]):
+            return
+        # TODO: check
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        
+        client_type_snake, client_pkg = convert_ros_format_generic(info["type"])
+        client_include = f"{client_type_snake}.hpp"
+        info["depends"] = [client_pkg]
+        info["includes"] = [client_include]
+        super().add(info)
+    
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if info.get("type", None) == None:
+            return False, "Service type is empty"
+        if info.get("srv_name", "") == "":
+            return False, "Service name is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class ActionServerManager(NodeItemManagerBase):
+    def __init__(self, action_server_dict: Dict):
+        super().__init__(action_server_dict)
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["name", "var_name", "type", "handle_goal", "handle_cancel", "handle_accepted", "execute"]):
+            return
+        # TODO: check
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        action_srv_type_snake, action_srv_pkg = convert_ros_format_generic(info["type"])
+        action_srv_include = f"{action_srv_type_snake}.hpp"
+        info["depends"] = [action_srv_pkg]
+        info["includes"] = [action_srv_include]
+        super().add(info)
+    
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("name", "") == "":
+            return False, "Action name is empty"
+        if info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if info.get("type", None) == None:
+            return False, "Action type is empty"
+        if info.get("handle_goal", "") == "":
+            return False, "Handle goal method name is empty"
+        if info.get("handle_cancel", "") == "":
+            return False, "Handle cancel method name is empty"
+        if info.get("handle_accepted", "") == "":
+            return False, "Handle accepted method name is empty"
+        if info.get("execute", "") == "":
+            return False, "Execute method name is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class ActionClientManager(NodeItemManagerBase):
+    def __init__(self, action_client_dict: Dict):
+        super().__init__(action_client_dict)
+    
+    def add(self, info: Dict):
+        if not has_keys(info, ["srv_name", "var_name", "type", "goal_response_callback", "feedback_callback", "result_callback"]):
+            return
+        # TODO: check
+        # if self.is_name_busy(info["var_name"]):
+        #     return
+        action_client_type_snake, action_client_pkg = convert_ros_format_generic(info["type"])
+        action_client_include = f"{action_client_type_snake}.hpp"
+        info["depends"] = [action_client_pkg]
+        info["includes"] = [action_client_include]
+        super().add(info)
+    
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("srv_name", "") == "":
+            return False, "Action server name is empty"
+        if info.get("var_name", "") == "":
+            return False, "Variable's name is empty"
+        if info.get("type", None) == None:
+            return False, "Action type is empty"
+        if info.get("goal_response_callback", "") == "":
+            return False, "Goal response callback name is empty"
+        if info.get("feedback_callback", "") == "":
+            return False, "Feedback callback name is empty"
+        if info.get("result_callback", "") == "":
+            return False, "Result callback name is empty"
+        # if not skip_name and self.is_name_busy(info["var_name"]):
+        #     return False, "Variable's name is busy"
+        return True, ""
+
+class SyncSubManager(NodeItemManagerBase):
+    def __init__(self, sync_sub_dict: Dict):
+        super().__init__(sync_sub_dict, unique_key='callback')
+        
+    def add(self, info: Dict):
+        if not has_keys(info, ["callback", "sync_policy", "queue_size", "subs"]):
+            return
+        # TODO: check
+        # if self.is_name_busy(info["callback"]):
+        #     return
+        for s in info["subs"]:
+            msg_type_snake, msg_pkg = convert_ros_format_generic(s["msg_type"])
+            msg_include = f"{msg_type_snake}.hpp"
+            s["depends"] = [msg_pkg]
+            s["includes"] = [msg_include]
+        super().add(info)
+
+    # TODO: add validation
+    def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        return True, ""
 
 class Ros2PkgGenerator:
     
@@ -95,6 +397,16 @@ class Ros2PkgGenerator:
                 "ros_distro": "Foxy"
             }
         
+        self.subs = SubManager(self.config["subscribers"])
+        self.pubs = PubManager(self.config["publishers"])
+        self.timers = TimerManager(self.config["timers"])
+        self.params = ParamManager(self.config["params"])
+        self.srvs = ServiceManager(self.config["services"])
+        self.clients = ClientManager(self.config["clients"])
+        self.action_srvs = ActionServerManager(self.config["action_servers"])
+        self.action_clients = ActionClientManager(self.config["action_clients"])
+        self.sync_subs = SyncSubManager(self.config["sync_subscribers"])
+        
         self.env = jinja2.Environment(
             loader=jinja2.FileSystemLoader('templates'),
             trim_blocks=True,
@@ -116,7 +428,6 @@ class Ros2PkgGenerator:
             return {"Object": "", "UniquePtr": "::UniquePtr", "SharedPtr": "::SharedPtr", "ConstSharedPtr": "::ConstSharedPtr"}
         else:
             return {"Object": "", "Reference": "&", "UniquePtr": "::UniquePtr", "SharedPtr": "::SharedPtr", "ConstSharedPtr": "::ConstSharedPtr"}
-    
     
     def __getitem__(self, key):
         return self.config[key]
@@ -199,365 +510,6 @@ class Ros2PkgGenerator:
 
         self.config['include_pkgs'] = deps
         self.config['includes'] = includes
-    
-    def remove_item(self, unique_value: str, dict_name: str, id_key: str = 'var_name'):
-        index = next([i for i, item in enumerate(self.config[dict_name]) if item[id_key] == unique_value], -1)
-        if index >= 0:
-            del self.config[dict_name][index]
-    
-    def remove_items(self, unique_value: List[str], dict_name: str, id_key: str = 'var_name'):
-        self.config[dict_name] = [item for item in self.config[dict_name] if item[id_key] not in unique_value]
-    
-    def get_item(self, unique_value: str, dict_name: str, id_key: str = 'var_name'):
-        index = next(iter([i for i, item in enumerate(self.config[dict_name]) if item[id_key] == unique_value]), -1)
-        return (None if index < 0 else self.config[dict_name][index], index)
-    
-    def update_item(self, item_info: Dict, index: int, dict_name: str, add_method = None):
-        if index >= 0 and index < len(self.config[dict_name]):
-            del self.config[dict_name][index]
-            add_method(item_info)
-    
-    # Subscriptions
-    
-    def add_subscription(self, sub_info: Dict):
-        if not has_keys(sub_info, ["msg_type", "var_name", "topic", "callback", "qos"]):
-            return
-        if not ("callback_arg_type" in sub_info.keys() or "cpp_type" in sub_info.keys()):
-            return
-        if self.is_name_busy(sub_info["var_name"]):
-            return
-        
-        msg_type_snake, msg_pkg = convert_ros_format_generic(sub_info["msg_type"])
-        msg_include = f"{msg_type_snake}.hpp"
-        sub_info["depends"] = [msg_pkg]
-        sub_info["includes"] = [msg_include]
-        
-        self.config["subscribers"].append(sub_info)
-    
-    def remove_subscription(self, sub_var_name: str):
-        self.remove_item(sub_var_name, "subscribers")
-    
-    def remove_subscriptions(self, sub_var_names: List[str]):
-        self.remove_items(sub_var_names, "subscribers")
-    
-    def get_subscription(self, sub_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(sub_var_name, "subscribers")
-    
-    def update_subscription(self, sub_info: Dict, index: int):
-        self.update_item(sub_info, index, "subscribers", self.add_subscription)
-    
-    def validate_subscription(self, sub_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if sub_info.get("msg_type", None) == None:
-            return False, "Message type is empty"
-        if sub_info.get("var_name", "") == "":
-            return False, "Variable name type is empty"
-        if sub_info.get("topic", "") == "":
-            return False, "Topic name is empty"
-        if sub_info.get("callback", "") == "":
-            return False, "Callback method name is empty"
-        if sub_info.get("qos", {}) == {}:
-            return False, "QoS is empty"
-        if "cpp_type" in sub_info.keys() and sub_info["cpp_type"] == "":
-            return False, "C++ is empty"
-        if not skip_name and self.is_name_busy(sub_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-    
-    # Publishers
-    
-    def add_publisher(self, pub_info: Dict):
-        if not has_keys(pub_info, ["msg_type", "var_name", "topic", "qos"]):
-            return
-        if self.is_name_busy(pub_info["var_name"]):
-            return
-        
-        msg_type_snake, msg_pkg = convert_ros_format_generic(pub_info["msg_type"])
-        msg_include = f"{msg_type_snake}.hpp"
-        pub_info["depends"] = [msg_pkg]
-        pub_info["includes"] = [msg_include]
-        
-        self.config["publishers"].append(pub_info)
-    
-    def remove_publisher(self, pub_var_name: str):
-        self.remove_item(pub_var_name, "publishers")
-    
-    def remove_publishers(self, pub_var_names: List[str]):
-        self.remove_items(pub_var_names, "publishers")
-    
-    def get_publisher(self, pub_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(pub_var_name, "publishers")
-    
-    def update_publisher(self, pub_info: Dict, index: int):
-        self.update_item(pub_info, index, "publishers", self.add_publisher)
-    
-    def validate_publisher(self, pub_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if pub_info.get("msg_type", None) == None:
-            return False, "Message type is empty"
-        if pub_info.get("var_name", "") == "":
-            return False, "Variable name type is empty"
-        if pub_info.get("topic", "") == "":
-            return False, "Topic name is empty"
-        if pub_info.get("qos", {}) == {}:
-            return False, "QoS is empty"
-        if not skip_name and self.is_name_busy(pub_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-    
-    # Timers
-    
-    def add_timer(self, timer_info: Dict):
-        if not has_keys(timer_info, ["var_name", "period", "callback"]):
-            return
-        if self.is_name_busy(timer_info["var_name"]):
-            return
-        self.config["timers"].append(timer_info)
-    
-    def remove_timer(self, timer_var_name: str):
-        self.remove_item(timer_var_name, "timers")
-    
-    def remove_timers(self, timer_var_names: List[str]):
-        self.remove_items(timer_var_names, "timers")
-    
-    def get_timer(self, timer_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(timer_var_name, "timers")
-    
-    def update_timer(self, timer_info: Dict, index: int):
-        self.update_item(timer_info, index, "timers", self.add_timer)
-    
-    def validate_timer(self, timer_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if timer_info.get("var_name", "") == "":
-            return False, "Variable name type is empty"
-        if timer_info.get("callback", "") == "":
-            return False, "Callback method name is empty"
-        if not skip_name and self.is_name_busy(timer_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-    
-    # Params
-    
-    def add_param(self, param_info: Dict):
-        if not has_keys(param_info, ["name", "type", "default"]):
-            return
-        if any(p["name"] == param_info["name"] for p in self.config["params"]):
-            return
-        self.config["params"].append(param_info)
-    
-    def remove_param(self, param_name: str):
-        self.remove_item(param_name, "params", "name")
-    
-    def remove_params(self, param_names: List[str]):
-        self.remove_items(param_names, "params", "name")
-    
-    def get_param(self, param_name: str) -> Tuple[dict, int]:
-        return self.get_item(param_name, "params", "name")
-    
-    def update_param(self, param_info: Dict, index: int):
-        self.update_item(param_info, index, "params", self.add_param)
-    
-    def validate_param(self, param_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if param_info.get("name", "") == "":
-            return False, "Param name is empty"
-        if param_info.get("type", None) == None:
-            return False, "Param type is empty"
-        if param_info.get("default", None) == None:
-            return False, "Default value is empty"
-        return True, ""
-    
-    # Service servers
-    
-    def add_service(self, srv_info: Dict):
-        if not has_keys(srv_info, ["type", "var_name", "name", "callback"]):
-            return
-        if self.is_name_busy(srv_info["var_name"]):
-            return
-        
-        srv_type_snake, srv_pkg = convert_ros_format_generic(srv_info["type"])
-        srv_include = f"{srv_type_snake}.hpp"
-        srv_info["depends"] = [srv_pkg]
-        srv_info["includes"] = [srv_include]
-        
-        self.config["services"].append(srv_info)
-    
-    def remove_service(self, srv_var_name: str):
-        self.remove_item(srv_var_name, "services")
-
-    def remove_services(self, srv_var_names: List[str]):
-        self.remove_items(srv_var_names, "services")
-
-    def get_service(self, srv_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(srv_var_name, "services")
-
-    def update_service(self, srv_info: Dict, index: int):
-        self.update_item(srv_info, index, "services", self.add_service)
-    
-    def validate_service(self, srv_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if srv_info.get("var_name", "") == "":
-            return False, "Variable's name is empty"
-        if srv_info.get("type", None) == None:
-            return False, "Service type is empty"
-        if srv_info.get("name", "") == "":
-            return False, "Service name is empty"
-        if srv_info.get("callback", "") == "":
-            return False, "Service callback is empty"
-        if not skip_name and self.is_name_busy(srv_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-    
-    # Service clients
-    
-    def add_client(self, client_info: Dict):
-        if not has_keys(client_info, ["type", "var_name", "srv_name"]):
-            return
-        if self.is_name_busy(client_info["var_name"]):
-            return
-        
-        client_type_snake, client_pkg = convert_ros_format_generic(client_info["type"])
-        client_include = f"{client_type_snake}.hpp"
-        client_info["depends"] = [client_pkg]
-        client_info["includes"] = [client_include]
-        
-        self.config["clients"].append(client_info)
-    
-    def remove_client(self, client_var_name: str):
-        self.remove_item(client_var_name, "clients")
-
-    def remove_clients(self, client_var_names: List[str]):
-        self.remove_items(client_var_names, "clients")
-
-    def get_client(self, client_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(client_var_name, "clients")
-
-    def update_client(self, client_info: Dict, index: int):
-        self.update_item(client_info, index, "clients", self.add_client)
-    
-    def validate_client(self, client_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if client_info.get("var_name", "") == "":
-            return False, "Variable's name is empty"
-        if client_info.get("type", None) == None:
-            return False, "Service type is empty"
-        if client_info.get("srv_name", "") == "":
-            return False, "Service name is empty"
-        if not skip_name and self.is_name_busy(client_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-
-    # Action servers
-    
-    def add_action_server(self, action_srv_info: Dict):
-        if not has_keys(action_srv_info, ["name", "var_name", "type", "handle_goal", "handle_cancel", "handle_accepted", "execute"]):
-            return
-        if self.is_name_busy(action_srv_info["var_name"]):
-            return
-        action_srv_type_snake, action_srv_pkg = convert_ros_format_generic(action_srv_info["type"])
-        action_srv_include = f"{action_srv_type_snake}.hpp"
-        action_srv_info["depends"] = [action_srv_pkg]
-        action_srv_info["includes"] = [action_srv_include]
-        
-        self.config["action_servers"].append(action_srv_info)
-
-    def remove_action_server(self, action_srv_var_name: str):
-        self.remove_item(action_srv_var_name, "action_servers")
-
-    def remove_action_servers(self, action_srv_var_names: List[str]):
-        self.remove_items(action_srv_var_names, "action_servers")
-        
-    def get_action_server(self, action_srv_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(action_srv_var_name, "action_servers")
-    
-    def update_action_server(self, action_srv_info: Dict, index: int):
-        self.update_item(action_srv_info, index, "action_servers", self.add_action_server)
-    
-    def validate_action_server(self, action_srv_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if action_srv_info.get("name", "") == "":
-            return False, "Action name is empty"
-        if action_srv_info.get("var_name", "") == "":
-            return False, "Variable's name is empty"
-        if action_srv_info.get("type", None) == None:
-            return False, "Action type is empty"
-        if action_srv_info.get("handle_goal", "") == "":
-            return False, "Handle goal method name is empty"
-        if action_srv_info.get("handle_cancel", "") == "":
-            return False, "Handle cancel method name is empty"
-        if action_srv_info.get("handle_accepted", "") == "":
-            return False, "Handle accepted method name is empty"
-        if action_srv_info.get("execute", "") == "":
-            return False, "Execute method name is empty"
-        if not skip_name and self.is_name_busy(action_srv_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-
-    # Action clients
-    
-    def add_action_client(self, action_client_info: Dict):
-        if not has_keys(action_client_info, ["srv_name", "var_name", "type", "goal_response_callback", "feedback_callback", "result_callback"]):
-            return
-        if self.is_name_busy(action_client_info["var_name"]):
-            return
-        action_client_type_snake, action_client_pkg = convert_ros_format_generic(action_client_info["type"])
-        action_client_include = f"{action_client_type_snake}.hpp"
-        action_client_info["depends"] = [action_client_pkg]
-        action_client_info["includes"] = [action_client_include]
-        
-        self.config["action_clients"].append(action_client_info)
-
-    def remove_action_client(self, action_client_var_name: str):
-        self.remove_item(action_client_var_name, "action_clients")
-
-    def remove_action_clients(self, action_client_var_names: List[str]):
-        self.remove_items(action_client_var_names, "action_clients")
-        
-    def get_action_client(self, action_client_var_name: str) -> Tuple[dict, int]:
-        return self.get_item(action_client_var_name, "action_clients")
-    
-    def update_action_client(self, action_client_info: Dict, index: int):
-        self.update_item(action_client_info, index, "action_clients", self.add_action_client)
-    
-    def validate_action_client(self, action_client_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
-        if action_client_info.get("srv_name", "") == "":
-            return False, "Action server name is empty"
-        if action_client_info.get("var_name", "") == "":
-            return False, "Variable's name is empty"
-        if action_client_info.get("type", None) == None:
-            return False, "Action type is empty"
-        if action_client_info.get("goal_response_callback", "") == "":
-            return False, "Goal response callback name is empty"
-        if action_client_info.get("feedback_callback", "") == "":
-            return False, "Feedback callback name is empty"
-        if action_client_info.get("result_callback", "") == "":
-            return False, "Result callback name is empty"
-        if not skip_name and self.is_name_busy(action_client_info["var_name"]):
-            return False, "Variable's name is busy"
-        return True, ""
-    
-    # Synchronized subscriptions (message filters)
-    # TODO: add validation
-    def add_sync_subscription(self, sync_sub_info: Dict):
-        if not has_keys(sync_sub_info, ["callback", "sync_policy", "queue_size", "subs"]):
-            return
-        if self.is_name_busy(sync_sub_info["callback"]):
-            return
-        
-        for s in sync_sub_info["subs"]:
-            msg_type_snake, msg_pkg = convert_ros_format_generic(s["msg_type"])
-            msg_include = f"{msg_type_snake}.hpp"
-            s["depends"] = [msg_pkg]
-            s["includes"] = [msg_include]
-
-        if "sync_subscribers" not in self.config:
-            self.config["sync_subscribers"] = []
-        self.config["sync_subscribers"].append(sync_sub_info)
-    
-    def remove_sync_subscription(self, sync_cb_name: str):
-        self.remove_item(sync_cb_name, "sync_subscribers", "callback")
-    
-    def remove_sync_subscriptions(self, sync_cb_names: List[str]):
-        self.remove_items(sync_cb_names, "sync_subscribers", "callback")
-    
-    def get_sync_subscription(self, sync_cb_name: str) -> Tuple[dict, int]:
-        return self.get_item(sync_cb_name, "sync_subscribers", "callback")
-    
-    def update_sync_subscription(self, sync_sub_info: Dict, index: int):
-        self.update_item(sync_sub_info, index, "sync_subscribers", self.add_sync_subscription)
     
     def generate_files(self):
         self.__update_includes()
