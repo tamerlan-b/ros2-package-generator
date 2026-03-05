@@ -108,6 +108,9 @@ class NodeItemManagerBase:
     def update(self, info: Dict, index: int):
         self.__update_item(info, index, self.add)
     
+    def clear(self):
+        self.dict.clear()
+    
     # TODO: make abstract
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
         return True, ""
