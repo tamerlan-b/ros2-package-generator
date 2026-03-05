@@ -353,6 +353,7 @@ class ActionClientManager(NodeItemManagerBase):
 class SyncSubManager(NodeItemManagerBase):
     def __init__(self, sync_sub_dict: Dict):
         super().__init__(sync_sub_dict, unique_key='callback')
+        self.num_max_subs = 9
         
     def add(self, info: Dict):
         if not has_keys(info, ["callback", "sync_policy", "queue_size", "subs"]):
@@ -367,8 +368,24 @@ class SyncSubManager(NodeItemManagerBase):
             s["includes"] = [msg_include]
         super().add(info)
 
-    # TODO: add validation
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if info.get("sync_policy", None) == None:
+            return False, "Synchronization policy is empty"
+        if info.get("callback", "") == "":
+            return False, "Callback name is empty"
+        if info.get("subs", []) == []:
+            return False, "No subscriptions for synchronization"
+        if len(info.get("subs", [])) > self.num_max_subs:
+            return False, "Number of synchronized topics in C++ API cannot exceed 9"
+        return True, ""
+    
+    def validate_sub(self, sub_info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
+        if sub_info.get("msg_type", None) == None:
+            return False, "Message type is empty"
+        if sub_info.get("var_name", "") == "":
+            return False, "Variable name type is empty"
+        if sub_info.get("topic", "") == "":
+            return False, "Topic name is empty"
         return True, ""
 
 class Ros2PkgGenerator:

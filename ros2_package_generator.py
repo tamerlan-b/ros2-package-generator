@@ -288,11 +288,9 @@ def add_action_client():
 
 @st.dialog("Add synchronized subscriber")
 def __add_sync_sub():
-    num_max_subs = 9
     sync_sub_info = {}
     sync_sub_info["callback"] = st.text_input("Synchronized callback function name")
     policies = ["ExactTime", "ApproximateTime"]
-    # TODO: in message_filters for humble there are "approximate_epsilon_time.hpp", but there are no "approximate_epsilon_time.h"
     if st.session_state["gen"]["ros_distro"] > "Humble":
         sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", policies + ["ApproximateEpsilonTime", "LatestTime"])
         if sync_sub_info["sync_policy"] == "ApproximateEpsilonTime":
@@ -307,11 +305,11 @@ def __add_sync_sub():
         with st.expander('QoS settings'):
             sub_info["qos"] = add_qos()
         if st.form_submit_button("Add topic"):
-            # TODO: add check for empty fields
-            if len(st.session_state['temp_subs']) < num_max_subs:
+            res, error_str = st.session_state["gen"].sync_subs.validate_sub(sub_info)
+            if res:
                 st.session_state['temp_subs'].append(sub_info)
             else:
-                st.error("Number of synchronized topics in C++ API cannot exceed 9")
+                st.error(error_str)
     
     def remove_sub(var_name: str):
         index = next(iter([i for i, s in enumerate(st.session_state['temp_subs']) if s["var_name"] == var_name]), -1)
@@ -323,11 +321,14 @@ def __add_sync_sub():
         text_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "🗑️", help="Remove subscriber", on_click=lambda var=var_name: remove_sub(var), btn_key=var_name)
     
     if st.button("Submit"):
-        # TODO: add check for fields and num subs
         sync_sub_info["subs"] = st.session_state['temp_subs'].copy()
-        st.session_state["gen"].sync_subs.add(sync_sub_info)
-        st.session_state['temp_subs'] = []
-        st.rerun()
+        res, error_str = st.session_state["gen"].sync_subs.validate(sync_sub_info)
+        if res:
+            st.session_state["gen"].sync_subs.add(sync_sub_info)
+            st.session_state['temp_subs'] = []
+            st.rerun()
+        else:
+            st.error(error_str)
 
 def add_sync_sub():
     st.session_state['temp_subs'] = []
@@ -527,7 +528,6 @@ def edit_action_client(action_client_var_name: str):
 @st.dialog("Edit synchronized subscriber")
 def __edit_sync_sub(sync_cb_name: str):
     editing_sync_sub, index = st.session_state['gen'].sync_subs.get(sync_cb_name)
-    num_max_subs = 9
     sync_sub_info = {}
     sync_sub_info["callback"] = st.text_input("Synchronized callback function name", value=editing_sync_sub.get("callback", ""))
     sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"])
@@ -541,11 +541,11 @@ def __edit_sync_sub(sync_cb_name: str):
         with st.expander('QoS settings'):
             sub_info["qos"] = add_qos()
         if st.form_submit_button("Add topic"):
-            # TODO: add check for empty fields
-            if len(st.session_state['temp_subs']) < num_max_subs:
+            res, error_str = st.session_state["gen"].sync_subs.validate_sub(sub_info)
+            if res:
                 st.session_state['temp_subs'].append(sub_info)
             else:
-                st.error("Number of synchronized topics in C++ API cannot exceed 9")
+                st.error(error_str)
     
     def remove_sub(var_name: str):
         index = next(iter([i for i, s in enumerate(st.session_state['temp_subs']) if s["var_name"] == var_name]), -1)
@@ -557,11 +557,14 @@ def __edit_sync_sub(sync_cb_name: str):
         text_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "🗑️", help="Remove subscriber", on_click=lambda var=var_name: remove_sub(var), btn_key=var_name)
     
     if st.button("Submit"):
-        # TODO: add check for fields and num subs
         sync_sub_info["subs"] = st.session_state['temp_subs'].copy()
-        st.session_state["gen"].sync_subs.update(sync_sub_info, index)
-        st.session_state['temp_subs'] = []
-        st.rerun()
+        res, error_str = st.session_state["gen"].sync_subs.validate(sync_sub_info)
+        if res:
+            st.session_state["gen"].sync_subs.update(sync_sub_info, index)
+            st.session_state['temp_subs'] = []
+            st.rerun()
+        else:
+            st.error(error_str)
     pass
 
 def edit_sync_sub(sync_sub_var_name: str):
