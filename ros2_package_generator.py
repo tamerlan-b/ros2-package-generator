@@ -2,11 +2,11 @@
 
 import streamlit as st
 from streamlit_tags import st_tags
-from graphviz import Digraph
 import zipfile
 import io
 from typing import List, Dict, Any
 from generator_core import Ros2PkgGenerator
+from node_visualization import draw_node
 
 st.title("ROS2 Package Generator")
 
@@ -618,35 +618,7 @@ def create_elems_code_cols(is_mobile: bool):
 st.set_page_config(layout="centered" if st.session_state['view'] == 'Mobile' else "wide")
 col_elems, col_code = create_elems_code_cols(st.session_state['view'] == 'Mobile')
 
-with col_elems:
-
-    def draw_node() -> Digraph:
-        dot = Digraph(comment='ROS2 Node', format='svg')
-        dot.attr(rankdir='LR')  # Left to right
-
-        # Set styles
-        dot.attr('node', shape='box', style='filled', color='lightblue2')
-        dot.attr('edge', arrowhead='normal')
-        
-        # Add node (in the middle)
-        dot.node('NODE', st.session_state['gen']['node_name'], shape='box', style='filled', 
-                fillcolor='lightblue', fontsize='16', fontname='Arial')
-
-        # Add input topics (subscribers) - to the left
-        for i, sub in enumerate(st.session_state['gen']['subscribers']):
-            dot.node(f'IN_{i}', sub["topic"], shape='parallelogram', 
-                    style='filled', fillcolor='lightcoral')
-            dot.edge(f'IN_{i}', 'NODE', label='')
-
-        # Add output topics (publishers) - to the right
-        for i, pub in enumerate(st.session_state['gen']['publishers']):
-            dot.node(f'OUT_{i}', pub["topic"], shape='parallelogram', 
-                    style='filled', fillcolor='lightgreen')
-            dot.edge('NODE', f'OUT_{i}', label='')
-
-        # TODO: add visualization for services
-        return dot
-
+with col_elems:   
     elems_tab, graph_tab = st.tabs(["Node elements", "Graph"])
     
     with elems_tab:
@@ -721,7 +693,7 @@ with col_elems:
             
     # Visualize node's graph
     with graph_tab:
-        st.graphviz_chart(draw_node())
+        st.graphviz_chart(draw_node(st.session_state['gen'].config))
 
 with col_code:
 
