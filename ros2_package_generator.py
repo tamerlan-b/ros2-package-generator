@@ -774,8 +774,7 @@ with col_code:
         # Add "Download Package" button
         simple_download_button()
         
-    
-    tabs = st.tabs(files.keys())
+    tabs = st.tabs(list(files.keys()))
     index = 0
     for fname, fcontent in files.items():
         with tabs[index]:
