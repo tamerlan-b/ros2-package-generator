@@ -14,8 +14,8 @@ def draw_node(node_config: Dict) -> Digraph:
         topic_border_color = 'darkred'
         sync_color = 'plum'
         sync_border_color = 'purple'
-        service_color='lemonchiffon'
-        service_border_color = 'darkyellow'
+        service_color='gold'
+        service_border_color = 'darkgoldenrod'
         action_color='lightgreen'
         action_border_color = 'darkgreen'
         
