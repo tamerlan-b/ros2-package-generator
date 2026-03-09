@@ -30,6 +30,25 @@ def draw_node(node_config: Dict) -> Digraph:
         
         # === INPUTS (to the left) ===
         
+        # TF topics
+        if node_config.get("tf_listener", False):
+            tf_msg_type = 'tf2_msgs::msg::TFMessage'
+            # /tf
+            tf_node_id = 'TF'
+            dot.node(tf_node_id, 
+                    f'<<B>/tf</B><BR/><FONT POINT-SIZE="8">{tf_msg_type}</FONT>>',
+                    shape='parallelogram', style='filled', 
+                    fillcolor=topic_color, color=topic_border_color)
+            dot.edge(tf_node_id, 'NODE', color=topic_border_color)
+            
+            # /tf_static
+            tf_static_node_id = 'TF_STATIC'
+            dot.node(tf_static_node_id, 
+                    f'<<B>/tf_static</B><BR/><FONT POINT-SIZE="8">{tf_msg_type}</FONT>>',
+                    shape='parallelogram', style='filled', 
+                    fillcolor=topic_color, color=topic_border_color)
+            dot.edge(tf_static_node_id, 'NODE', color=topic_border_color)
+        
         # Subscribers
         for i, sub in enumerate(node_config.get('subscribers', [])):
             node_id = f'SUB_{i}'
