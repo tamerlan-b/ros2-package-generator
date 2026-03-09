@@ -143,7 +143,7 @@ def draw_node(node_config: Dict) -> Digraph:
                 <TR><TD BGCOLOR="{service_color}" WIDTH="20" HEIGHT="10"></TD><TD>Service Client/Server</TD></TR>
                 <TR><TD BGCOLOR="{action_color}" WIDTH="20" HEIGHT="10"></TD><TD>Action Client/Server</TD></TR>
                 <TR><TD BGCOLOR="{node_color}" WIDTH="20" HEIGHT="10"></TD><TD>Node</TD></TR>
-                <TR><TD BGCOLOR="{sync_color}" WIDTH="20" HEIGHT="10"></TD><TD>Syncronizer</TD></TR>
+                <TR><TD BGCOLOR="{sync_color}" WIDTH="20" HEIGHT="10"></TD><TD>Synchronizer</TD></TR>
             </TABLE>
             >'''
             
