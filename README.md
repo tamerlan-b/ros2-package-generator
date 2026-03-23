@@ -2,6 +2,8 @@
 
 Tool for quickly creating ROS2 Foxy packages with C++ node
 
+**Try demo here:** https://ros2-package-generator.onrender.com/
+
 ![screenshot](docs/screenshot.png)
 
 ### Features
