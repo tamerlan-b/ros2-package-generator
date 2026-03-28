@@ -1,4 +1,4 @@
 {% extends "foxy/node.hpp.jinja2" %}
 {% block goal_response_callback scoped %}
-    void {{ action_client.goal_response_callback }}(rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr gh);
+    void {{ action_client.goal_response_callback }}(rclcpp_action::ClientGoalHandle<{{ action_client.type | replace('/', '::') }}>::SharedPtr gh);
 {% endblock %}

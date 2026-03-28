@@ -29,7 +29,7 @@ def parse_ros_interfaces_file(filename: str):
                 current_key = mapping[line]
                 result[current_key] = []
             elif current_key and line:
-                result[current_key].append(line.replace('/', '::'))
+                result[current_key].append(line)
     return result
 
 if "autocompletes" not in st.session_state:
@@ -589,27 +589,27 @@ with st.sidebar:
         st.session_state["gen"]['includes'] = {}
         st.session_state["gen"]["package_name"] = "my_package"
         st.session_state["gen"]["cmake_target_name"] = "my_library"
-        st.session_state["gen"].pubs.add({"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
-        st.session_state["gen"].subs.add({"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "::SharedPtr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].pubs.add({"msg_type": "sensor_msgs/msg/Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].subs.add({"msg_type": "sensor_msgs/msg/PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "::SharedPtr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
         st.session_state["gen"].timers.add({"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},)
         st.session_state["gen"].params.add({"name": "buffer_size", "type": "int", "default": "10"})
-        st.session_state["gen"].srvs.add({"name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "service", "callback": "service_callback"})
-        st.session_state["gen"].clients.add({"srv_name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "client"})
-        st.session_state["gen"].action_srvs.add({"name": "fibonacci", "var_name": "action_server_", "type": "tf2_msgs::action::LookupTransform", "handle_goal": "handle_goal", "handle_cancel": "handle_cancel", "handle_accepted": "handle_accepted", "execute": "execute"})
-        st.session_state["gen"].action_clients.add({"srv_name": "fibonacci", "var_name": "action_client_", "type": "tf2_msgs::action::LookupTransform", "goal_response_callback": "goal_response_cb", "feedback_callback": "feedback_response_cb", "result_callback": "result_response_cb"})
+        st.session_state["gen"].srvs.add({"name": "test_empty", "type": "std_srvs/srv/Empty", "var_name": "service", "callback": "service_callback"})
+        st.session_state["gen"].clients.add({"srv_name": "test_empty", "type": "std_srvs/srv/Empty", "var_name": "client"})
+        st.session_state["gen"].action_srvs.add({"name": "fibonacci", "var_name": "action_server_", "type": "tf2_msgs/action/LookupTransform", "handle_goal": "handle_goal", "handle_cancel": "handle_cancel", "handle_accepted": "handle_accepted", "execute": "execute"})
+        st.session_state["gen"].action_clients.add({"srv_name": "fibonacci", "var_name": "action_client_", "type": "tf2_msgs/action/LookupTransform", "goal_response_callback": "goal_response_cb", "feedback_callback": "feedback_response_cb", "result_callback": "result_response_cb"})
         st.session_state["gen"].sync_subs.add({
             "callback": "sync_callback",
             "sync_policy": "ApproximateTime",
             "queue_size": 4,
             "subs": [
                 {
-                    "msg_type": "sensor_msgs::msg::PointCloud2", 
+                    "msg_type": "sensor_msgs/msg/PointCloud2", 
                     "var_name": "rgbd_cloud_sub",
                     "topic": "/rgbd/points", 
                     "qos": {"is_default": "True", "queue_size": 4}
                 },
                 {
-                    "msg_type": "sensor_msgs::msg::Image", 
+                    "msg_type": "sensor_msgs/msg/Image", 
                     "var_name": "rgbd_img_sub",
                     "topic": "/rgbd/image", 
                     "qos": {"is_default": "True", "queue_size": 4}
