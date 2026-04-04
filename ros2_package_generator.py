@@ -115,8 +115,7 @@ def get_pub_sub_info(prior_info: Dict={}) -> Dict:
     return info
 
 def update_subscriber(sub_var_name: str = None):
-    editing_sub = {}
-    index = -1
+    editing_sub, index = {}, -1
     if sub_var_name:
         editing_sub, index = st.session_state['gen'].subs.get(sub_var_name)
     sub_info = get_pub_sub_info(editing_sub)
@@ -155,8 +154,7 @@ def add_subscriber():
     update_subscriber()
 
 def update_publisher(pub_var_name: str = None):
-    editing_pub = {}
-    index  = -1
+    editing_pub, index = {}, -1
     if pub_var_name:
         editing_pub, index = st.session_state['gen'].pubs.get(pub_var_name)
     pub_info = get_pub_sub_info(editing_pub)
@@ -184,8 +182,7 @@ def add_publisher():
     update_publisher()
 
 def update_parameter(param_name: str = None):
-    editing_param = {}
-    index = -1
+    editing_param, index = {}, -1
     if param_name:
         editing_param, index = st.session_state['gen'].params.get(param_name)
     param_info = {}
@@ -213,8 +210,7 @@ def add_parameter():
     update_parameter()
 
 def update_timer(timer_var_name: str = None):
-    editing_timer = {}
-    index = -1
+    editing_timer, index = {}, -1
     if timer_var_name:
         editing_timer, index = st.session_state['gen'].timers.get(timer_var_name)
     timer_info = {}
