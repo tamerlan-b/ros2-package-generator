@@ -301,60 +301,80 @@ def update_client(client_var_name: str = None):
 def add_client():
     update_client()
 
-@st.dialog("Add Action server")
-def add_action_server():
+def update_action_server(action_srv_var_name: str = None):
+    editing_action_srv, index = {}, -1
+    if action_srv_var_name:
+        editing_action_srv, index = st.session_state['gen'].action_srvs.get(action_srv_var_name)
     action_srv_info = {}
-    action_srv_info["name"] = st.text_input("Action name")
+    action_srv_info["name"] = st.text_input("Action name", value=editing_action_srv.get("name", ""))
     tags = st_select(
         label='Type',
         placeholder='Press Enter to add',
-        value=[],
+        value=[] if 'type' not in editing_action_srv else [editing_action_srv["type"]],
         options=st.session_state['autocompletes']['action'],
         maxtags=1,
         key="actions_tags"
     )
     action_srv_info["type"] = None if len(tags) == 0 else tags[0]
-    action_srv_info["var_name"] = st.text_input("Variable name", placeholder="action_server")
+    action_srv_info["var_name"] = st.text_input("Variable name", placeholder="action_server", value=editing_action_srv.get("var_name", ""))
     
-    action_srv_info["handle_goal"] = st.text_input("Goal handle method name", placeholder="handle_goal")
-    action_srv_info["handle_cancel"] = st.text_input("Goal cancel handle method name", placeholder="handle_cancel")
-    action_srv_info["handle_accepted"] = st.text_input("Goal accept handle method name", placeholder="handle_accepted")
-    action_srv_info["execute"] = st.text_input("Goal execute method name", placeholder="execute")
+    action_srv_info["handle_goal"] = st.text_input("Goal handle method name", value=editing_action_srv.get("handle_goal", ""))
+    action_srv_info["handle_cancel"] = st.text_input("Goal cancel handle method name", value=editing_action_srv.get("handle_cancel", ""))
+    action_srv_info["handle_accepted"] = st.text_input("Goal accept handle method name", value=editing_action_srv.get("handle_accepted", ""))
+    action_srv_info["execute"] = st.text_input("Goal execute method name", value=editing_action_srv.get("execute", ""))
     
     if st.button("Submit"):
-        res, error_str = st.session_state['gen'].action_srvs.validate(action_srv_info)
+        res, error_str = st.session_state['gen'].action_srvs.validate(action_srv_info, action_srv_var_name != None)
         if res:
-            st.session_state['gen'].action_srvs.add(action_srv_info)
+            if action_srv_var_name:
+                st.session_state['gen'].action_srvs.update(action_srv_info, index)
+            else:
+                st.session_state['gen'].action_srvs.add(action_srv_info)
             st.rerun()
         else:
             st.error(error_str)
 
-@st.dialog("Add Action client")
-def add_action_client():
+@st.dialog("Add Action server")
+def add_action_server():
+    update_action_server()
+
+def update_action_client(action_client_var_name: str = None):
+    editing_action_client, index = {}, -1
+    if action_client_var_name:
+        editing_action_client, index = st.session_state['gen'].action_clients.get(action_client_var_name)
     action_client_info = {}
-    action_client_info["srv_name"] = st.text_input("Action name")
+    action_client_info["srv_name"] = st.text_input("Action name", value=editing_action_client.get("srv_name", ""))
     tags = st_select(
         label='Type',
         placeholder='Press Enter to add',
-        value=[],
+        value=[] if 'type' not in editing_action_client else [editing_action_client["type"]],
         options=st.session_state['autocompletes']['action'],
         maxtags=1,
         key="actions_tags"
     )
     action_client_info["type"] = None if len(tags) == 0 else tags[0]
-    action_client_info["var_name"] = st.text_input("Variable name", placeholder="action_client")
+    action_client_info["var_name"] = st.text_input("Variable name", placeholder="action_server", value=editing_action_client.get("var_name", ""))
     
-    action_client_info["goal_response_callback"] = st.text_input("Goal response callback name", placeholder="goal_response_cb")
-    action_client_info["feedback_callback"] = st.text_input("Feedback callback name", placeholder="feedback_response_cb")
-    action_client_info["result_callback"] = st.text_input("Result callback name", placeholder="result_response_cb")
+    action_client_info["goal_response_callback"] = st.text_input("Goal response callback name", value=editing_action_client.get("goal_response_callback", ""))
+    action_client_info["feedback_callback"] = st.text_input("Feedback callback name", value=editing_action_client.get("feedback_callback", ""))
+    action_client_info["result_callback"] = st.text_input("Result callback name", value=editing_action_client.get("result_callback", ""))
     
     if st.button("Submit"):
-        res, error_str = st.session_state['gen'].action_clients.validate(action_client_info)
+        st.write(action_client_info)
+        res, error_str = st.session_state['gen'].action_clients.validate(action_client_info, action_client_var_name != None)
         if res:
-            st.session_state['gen'].action_clients.add(action_client_info)
+            if action_client_var_name:
+                st.session_state['gen'].action_clients.update(action_client_info, index)
+            else:
+                st.session_state['gen'].action_clients.add(action_client_info)
             st.rerun()
         else:
             st.error(error_str)
+
+
+@st.dialog("Add Action client")
+def add_action_client():
+    update_action_client()
 
 @st.dialog("Add synchronized subscriber")
 def __add_sync_sub():
@@ -430,61 +450,11 @@ def edit_client(client_var_name: str):
 
 @st.dialog("Edit Action server")
 def edit_action_server(action_srv_var_name: str):
-    editing_action_srv, index = st.session_state['gen'].action_srvs.get(action_srv_var_name)
-    action_srv_info = {}
-    action_srv_info["name"] = st.text_input("Action name", value=editing_action_srv.get("name", ""))
-    tags = st_select(
-        label='Type',
-        placeholder='Press Enter to add',
-        value=[] if 'type' not in editing_action_srv else [editing_action_srv["type"]],
-        options=st.session_state['autocompletes']['action'],
-        maxtags=1,
-        key="actions_tags"
-    )
-    action_srv_info["type"] = None if len(tags) == 0 else tags[0]
-    action_srv_info["var_name"] = st.text_input("Variable name", placeholder="action_server", value=editing_action_srv.get("var_name", ""))
-    
-    action_srv_info["handle_goal"] = st.text_input("Goal handle method name", value=editing_action_srv.get("handle_goal", ""))
-    action_srv_info["handle_cancel"] = st.text_input("Goal cancel handle method name", value=editing_action_srv.get("handle_cancel", ""))
-    action_srv_info["handle_accepted"] = st.text_input("Goal accept handle method name", value=editing_action_srv.get("handle_accepted", ""))
-    action_srv_info["execute"] = st.text_input("Goal execute method name", value=editing_action_srv.get("execute", ""))
-    
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].action_srvs.validate(action_srv_info, True)
-        if res:
-            st.session_state['gen'].action_srvs.update(action_srv_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_action_server(action_srv_var_name)
 
 @st.dialog("Edit Action client")
 def edit_action_client(action_client_var_name: str):
-    editing_action_client, index = st.session_state['gen'].action_clients.get(action_client_var_name)
-    action_client_info = {}
-    action_client_info["srv_name"] = st.text_input("Action name", value=editing_action_client.get("srv_name", ""))
-    tags = st_select(
-        label='Type',
-        placeholder='Press Enter to add',
-        value=[] if 'type' not in editing_action_client else [editing_action_client["type"]],
-        options=st.session_state['autocompletes']['action'],
-        maxtags=1,
-        key="actions_tags"
-    )
-    action_client_info["type"] = None if len(tags) == 0 else tags[0]
-    action_client_info["var_name"] = st.text_input("Variable name", placeholder="action_server", value=editing_action_client.get("var_name", ""))
-    
-    action_client_info["goal_response_callback"] = st.text_input("Goal response callback name", value=editing_action_client.get("goal_response_callback", ""))
-    action_client_info["feedback_callback"] = st.text_input("Feedback callback name", value=editing_action_client.get("feedback_callback", ""))
-    action_client_info["result_callback"] = st.text_input("Result callback name", value=editing_action_client.get("result_callback", ""))
-    
-    if st.button("Submit"):
-        st.write(action_client_info)
-        res, error_str = st.session_state['gen'].action_clients.validate(action_client_info, True)
-        if res:
-            st.session_state['gen'].action_clients.update(action_client_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_action_client(action_client_var_name)
 
 @st.dialog("Edit synchronized subscriber")
 def __edit_sync_sub(sync_cb_name: str):
