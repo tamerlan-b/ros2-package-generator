@@ -153,6 +153,10 @@ def update_subscriber(sub_var_name: str = None):
 def add_subscriber():
     update_subscriber()
 
+@st.dialog("Edit Subscriber")
+def edit_subscriber(sub_var_name: str):
+    update_subscriber(sub_var_name)
+
 def update_publisher(pub_var_name: str = None):
     editing_pub, index = {}, -1
     if pub_var_name:
@@ -180,6 +184,10 @@ def update_publisher(pub_var_name: str = None):
 @st.dialog("Add Publisher")
 def add_publisher():
     update_publisher()
+
+@st.dialog("Edit Publisher")
+def edit_publisher(pub_var_name: str):
+    update_publisher(pub_var_name)
 
 def update_parameter(param_name: str = None):
     editing_param, index = {}, -1
@@ -209,6 +217,10 @@ def update_parameter(param_name: str = None):
 def add_parameter():
     update_parameter()
 
+@st.dialog("Edit Parameter")
+def edit_parameter(param_name: str):
+    update_parameter(param_name)
+
 def update_timer(timer_var_name: str = None):
     editing_timer, index = {}, -1
     if timer_var_name:
@@ -231,6 +243,10 @@ def update_timer(timer_var_name: str = None):
 @st.dialog("Add Timer")
 def add_timer():
     update_timer()
+
+@st.dialog("Edit Timer")
+def edit_timer(timer_var_name: str):
+    update_timer(timer_var_name)
 
 def update_service(srv_var_name: str = None):
     editing_srv, index = {}, -1
@@ -267,6 +283,10 @@ def update_service(srv_var_name: str = None):
 def add_service():
     update_service()
 
+@st.dialog("Edit Service server")
+def edit_service(srv_var_name: str):
+    update_service(srv_var_name)
+
 def update_client(client_var_name: str = None):
     editing_client, index = {}, -1
     if client_var_name:
@@ -296,6 +316,10 @@ def update_client(client_var_name: str = None):
 @st.dialog("Add Service client")
 def add_client():
     update_client()
+
+@st.dialog("Edit Service client")
+def edit_client(client_var_name: str):
+    update_client(client_var_name)
 
 def update_action_server(action_srv_var_name: str = None):
     editing_action_srv, index = {}, -1
@@ -334,6 +358,10 @@ def update_action_server(action_srv_var_name: str = None):
 def add_action_server():
     update_action_server()
 
+@st.dialog("Edit Action server")
+def edit_action_server(action_srv_var_name: str):
+    update_action_server(action_srv_var_name)
+
 def update_action_client(action_client_var_name: str = None):
     editing_action_client, index = {}, -1
     if action_client_var_name:
@@ -367,10 +395,13 @@ def update_action_client(action_client_var_name: str = None):
         else:
             st.error(error_str)
 
-
 @st.dialog("Add Action client")
 def add_action_client():
     update_action_client()
+
+@st.dialog("Edit Action client")
+def edit_action_client(action_client_var_name: str):
+    update_action_client(action_client_var_name)
 
 def update_sync_sub(sync_cb_name: str = None):
     editing_sync_sub, index = {}, -1
@@ -425,38 +456,6 @@ def __add_sync_sub():
 def add_sync_sub():
     st.session_state['temp_subs'] = []
     __add_sync_sub()
-
-@st.dialog("Edit Publisher")
-def edit_publisher(pub_var_name: str):
-    update_publisher(pub_var_name)
-
-@st.dialog("Edit Subscriber")
-def edit_subscriber(sub_var_name: str):
-    update_subscriber(sub_var_name)
-
-@st.dialog("Edit Parameter")
-def edit_parameter(param_name: str):
-    update_parameter(param_name)
-
-@st.dialog("Edit Timer")
-def edit_timer(timer_var_name: str):
-    update_timer(timer_var_name)
-
-@st.dialog("Edit Service server")
-def edit_service(srv_var_name: str):
-    update_service(srv_var_name)
-
-@st.dialog("Edit Service client")
-def edit_client(client_var_name: str):
-    update_client(client_var_name)
-
-@st.dialog("Edit Action server")
-def edit_action_server(action_srv_var_name: str):
-    update_action_server(action_srv_var_name)
-
-@st.dialog("Edit Action client")
-def edit_action_client(action_client_var_name: str):
-    update_action_client(action_client_var_name)
 
 @st.dialog("Edit synchronized subscriber")
 def __edit_sync_sub(sync_cb_name: str):
