@@ -12,6 +12,12 @@ st.title("ROS2 Package Generator")
 
 st.set_page_config(page_title="ROS2 Package Generator", page_icon="resources/icon.png")
 
+def interface2cpp(interface: str):
+    return interface.replace('/', '::')
+
+def interface2py(interface: str):
+    return interface.replace('/', '.')
+
 def parse_ros_interfaces_file(filename: str):
     mapping = {
         "Messages:": "msg",
@@ -124,7 +130,8 @@ def add_subscriber():
         cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
         callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=0, horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{sub_info["callback_arg_type"]} msg);', language="cpp")
+        if sub_info.get("msg_type", None) != None:
+            st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos()
     
@@ -199,7 +206,11 @@ def add_service():
     srv_info["type"] = None if len(tags) == 0 else tags[0]
     srv_info["var_name"] = st.text_input("Variable name", placeholder="service")
     srv_info["callback"] = st.text_input("Service handler method name", placeholder="add_two_ints")
-    st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
+    if srv_info["type"] != None:
+        st.code(
+            f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', 
+            language="cpp"
+        )
     
     if st.button("Submit"):
         res, error_str = st.session_state['gen'].srvs.validate(srv_info)
@@ -372,7 +383,8 @@ def edit_subscriber(sub_var_name: str):
         cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
         callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{sub_info["callback_arg_type"]} msg);', language="cpp")
+        if sub_info.get("msg_type", None) != None:
+            st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos(editing_sub["qos"])
     
@@ -433,8 +445,8 @@ def edit_service(srv_var_name: str):
     srv_info["type"] = None if len(tags) == 0 else tags[0]
     srv_info["var_name"] = st.text_input("Variable name", value=editing_srv.get("var_name", ""))
     srv_info["callback"] = st.text_input("Service handler method name", value=editing_srv.get("callback", ""))
-        
-    st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
+    if srv_info["type"] != None:
+        st.code(f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', language="cpp")
     
     if st.button("Submit"):
         res, error_str = st.session_state['gen'].srvs.validate(srv_info, True)
