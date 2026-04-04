@@ -8,18 +8,18 @@
     {% for sub in subscribers %}
         {% if sub.adapter_name %}
 template<>
-struct rclcpp::TypeAdapter<{{ sub.cpp_type }}, {{ sub.msg_type }}>
+struct rclcpp::TypeAdapter<{{ sub.cpp_type }}, {{ sub.msg_type | replace('/', '::') }}>
 {
     using is_specialized = std::true_type;
     using custom_type = {{ sub.cpp_type }};
-    using ros_message_type = {{ sub.msg_type }};
+    using ros_message_type = {{ sub.msg_type | replace('/', '::') }};
     static void convert_to_ros_message(const custom_type & source, ros_message_type & destination)
     {
-        // TODO: add conversion from {{ sub.cpp_type }} to {{  sub.msg_type }}
+        // TODO: add conversion from {{ sub.cpp_type }} to {{  sub.msg_type | replace('/', '::') }}
     }
     static void convert_to_custom(const ros_message_type & source, custom_type & destination)
     {
-        // TODO: add conversion from {{ sub.msg_type }} to {{  sub.cpp_type }}
+        // TODO: add conversion from {{ sub.msg_type | replace('/', '::') }} to {{  sub.cpp_type }}
     }
 };
         {% endif %}
@@ -27,18 +27,18 @@ struct rclcpp::TypeAdapter<{{ sub.cpp_type }}, {{ sub.msg_type }}>
     {% for pub in publishers %}
         {% if pub.adapter_name %}
 template<>
-struct rclcpp::TypeAdapter<{{ pub.cpp_type }}, {{ pub.msg_type }}>
+struct rclcpp::TypeAdapter<{{ pub.cpp_type }}, {{ pub.msg_type | replace('/', '::') }}>
 {
     using is_specialized = std::true_type;
     using custom_type = {{ pub.cpp_type }};
-    using ros_message_type = {{ pub.msg_type }};
+    using ros_message_type = {{ pub.msg_type | replace('/', '::') }};
     static void convert_to_ros_message(const custom_type & source, ros_message_type & destination)
     {
-        // TODO: add conversion from {{ pub.cpp_type }} to {{  pub.msg_type }}
+        // TODO: add conversion from {{ pub.cpp_type }} to {{  pub.msg_type | replace('/', '::') }}
     }
     static void convert_to_custom(const ros_message_type & source, custom_type & destination)
     {
-        // TODO: add conversion from {{ pub.msg_type }} to {{  pub.cpp_type }}
+        // TODO: add conversion from {{ pub.msg_type | replace('/', '::') }} to {{  pub.cpp_type }}
     }
 };
         {% endif %}
@@ -47,7 +47,7 @@ struct rclcpp::TypeAdapter<{{ pub.cpp_type }}, {{ pub.msg_type }}>
 
 {% block sub_declaration scoped %}
     {% if sub.adapter_name %}
-    using {{ sub.adapter_name }} = rclcpp::TypeAdapter<{{ sub.cpp_type }}, {{ sub.msg_type }}>;
+    using {{ sub.adapter_name }} = rclcpp::TypeAdapter<{{ sub.cpp_type }}, {{ sub.msg_type | replace('/', '::') }}>;
     rclcpp::Subscription<{{ sub.adapter_name }}>::SharedPtr {{ sub.var_name }};
     void {{ sub.callback }}(const {{ sub.cpp_type }}& msg) const;
     {% else %}

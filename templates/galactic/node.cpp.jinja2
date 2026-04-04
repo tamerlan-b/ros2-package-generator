@@ -4,7 +4,7 @@
       [this](GoalHandle_t::SharedPtr gh){this->{{ action_client.goal_response_callback }}(std::move(gh));};
 {% endblock %}
 {% block goal_response_callback_def scoped %}
-void {{ node_classname }}::{{ action_client.goal_response_callback }}(rclcpp_action::ClientGoalHandle<{{ action_client.type }}>::SharedPtr gh)
+void {{ node_classname }}::{{ action_client.goal_response_callback }}(rclcpp_action::ClientGoalHandle<{{ action_client.type | replace('/', '::') }}>::SharedPtr gh)
 {
     // TODO: add implementation
 }

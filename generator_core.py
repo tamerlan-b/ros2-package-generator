@@ -25,41 +25,30 @@ def _camel_to_snake(name: str) -> str:
     s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1_\2', s1)   
     return s2.lower()
 
+def split_ros2_type(ros_msg_type: str) -> Tuple[str, str, str]:
+    parts = ros_msg_type.split('/')
+    pkg_name = parts[0]
+    interface_type = parts[1]   # 'msg', 'srv' or 'action'
+    type = parts[2]
+    return pkg_name, interface_type, type
+
+def to_cpp_include(pkg_name: str, interface_type: str, type: str) -> str:
+    return f"{pkg_name}/{interface_type}/{_camel_to_snake(type)}"
+
 def convert_ros_format_generic(ros_type: str) -> Tuple[str, str]:
     """
     Convert ROS type to path and extract package.
     Works for msg, srv, and action types.
-    
+
+    Args:
+        ros_type (str): ROS2 interface. For example: "sensor_msgs/msg/Image", "sensor_msgs/srv/SetCameraInfo"
+
     Returns:
-        tuple: (path, package_name)
+        Tuple[str, str]: (c++ include header, package_name). Example: ("sensor_msgs/msg/image.hpp", "sensor_msgs")
     """
-    # Normalize input
-    normalized = ros_type.replace('/', '::')
     
-    # Check for known ROS types 
-    for ros_type in ['msg', 'srv', 'action']:
-        pattern = f'::{ros_type}::'
-        if pattern in normalized:
-            package, _, message = normalized.split('::')
-            message_snake = _camel_to_snake(message)
-            return f"{package}/{ros_type}/{message_snake}", package
-    
-    # If no type specified, try to guess
-    if '::' in normalized:
-        parts = normalized.split('::')
-        if len(parts) == 3:
-            # Assume middle part is type (even if not standard)
-            package, ros_type, message = parts
-            message_snake = _camel_to_snake(message)
-            return f"{package}/{ros_type}/{message_snake}", package
-        elif len(parts) == 2:
-            # No type specified, assume 'msg'
-            package, message = parts
-            message_snake = _camel_to_snake(message)
-            return f"{package}/msg/{message_snake}", package
-    
-    # Fallback
-    return ros_type, "unknown"
+    pkg_name, interface_type, type = split_ros2_type(ros_type)
+    return to_cpp_include(pkg_name, interface_type, type), pkg_name
 
 def has_keys(dictionary, keys):
     return all(key in dictionary for key in keys)

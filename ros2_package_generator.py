@@ -12,6 +12,12 @@ st.title("ROS2 Package Generator")
 
 st.set_page_config(page_title="ROS2 Package Generator", page_icon="resources/icon.png")
 
+def interface2cpp(interface: str):
+    return interface.replace('/', '::')
+
+def interface2py(interface: str):
+    return interface.replace('/', '.')
+
 def parse_ros_interfaces_file(filename: str):
     mapping = {
         "Messages:": "msg",
@@ -29,7 +35,7 @@ def parse_ros_interfaces_file(filename: str):
                 current_key = mapping[line]
                 result[current_key] = []
             elif current_key and line:
-                result[current_key].append(line.replace('/', '::'))
+                result[current_key].append(line)
     return result
 
 if "autocompletes" not in st.session_state:
@@ -124,7 +130,8 @@ def add_subscriber():
         cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
         callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=0, horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{sub_info["callback_arg_type"]} msg);', language="cpp")
+        if sub_info.get("msg_type", None) != None:
+            st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos()
     
@@ -199,7 +206,11 @@ def add_service():
     srv_info["type"] = None if len(tags) == 0 else tags[0]
     srv_info["var_name"] = st.text_input("Variable name", placeholder="service")
     srv_info["callback"] = st.text_input("Service handler method name", placeholder="add_two_ints")
-    st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
+    if srv_info["type"] != None:
+        st.code(
+            f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', 
+            language="cpp"
+        )
     
     if st.button("Submit"):
         res, error_str = st.session_state['gen'].srvs.validate(srv_info)
@@ -372,7 +383,8 @@ def edit_subscriber(sub_var_name: str):
         cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
         callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        st.code(f'void {sub_info["callback"]}(const {sub_info["msg_type"]}{sub_info["callback_arg_type"]} msg);', language="cpp")
+        if sub_info.get("msg_type", None) != None:
+            st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos(editing_sub["qos"])
     
@@ -433,8 +445,8 @@ def edit_service(srv_var_name: str):
     srv_info["type"] = None if len(tags) == 0 else tags[0]
     srv_info["var_name"] = st.text_input("Variable name", value=editing_srv.get("var_name", ""))
     srv_info["callback"] = st.text_input("Service handler method name", value=editing_srv.get("callback", ""))
-        
-    st.code(f'void {srv_info["callback"]}(const std::shared_ptr<srv_info["type"]::Request> request, std::shared_ptr<srv_info["type"]::Response> response);', language="cpp")
+    if srv_info["type"] != None:
+        st.code(f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', language="cpp")
     
     if st.button("Submit"):
         res, error_str = st.session_state['gen'].srvs.validate(srv_info, True)
@@ -589,27 +601,27 @@ with st.sidebar:
         st.session_state["gen"]['includes'] = {}
         st.session_state["gen"]["package_name"] = "my_package"
         st.session_state["gen"]["cmake_target_name"] = "my_library"
-        st.session_state["gen"].pubs.add({"msg_type": "sensor_msgs::msg::Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
-        st.session_state["gen"].subs.add({"msg_type": "sensor_msgs::msg::PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "::SharedPtr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].pubs.add({"msg_type": "sensor_msgs/msg/Image", "var_name": "img_pub", "topic": "/image", "qos": {"is_default": True, "queue_size": 4}})
+        st.session_state["gen"].subs.add({"msg_type": "sensor_msgs/msg/PointCloud2", "var_name": "cloud_sub", "callback": "cloud_callback", "callback_arg_type": "::SharedPtr", "topic": "/points", "qos": {"is_default": True, "queue_size": 4}})
         st.session_state["gen"].timers.add({"var_name": "my_timer", "period": 50, "callback": "my_timer_callback"},)
         st.session_state["gen"].params.add({"name": "buffer_size", "type": "int", "default": "10"})
-        st.session_state["gen"].srvs.add({"name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "service", "callback": "service_callback"})
-        st.session_state["gen"].clients.add({"srv_name": "test_empty", "type": "std_srvs::srv::Empty", "var_name": "client"})
-        st.session_state["gen"].action_srvs.add({"name": "fibonacci", "var_name": "action_server_", "type": "tf2_msgs::action::LookupTransform", "handle_goal": "handle_goal", "handle_cancel": "handle_cancel", "handle_accepted": "handle_accepted", "execute": "execute"})
-        st.session_state["gen"].action_clients.add({"srv_name": "fibonacci", "var_name": "action_client_", "type": "tf2_msgs::action::LookupTransform", "goal_response_callback": "goal_response_cb", "feedback_callback": "feedback_response_cb", "result_callback": "result_response_cb"})
+        st.session_state["gen"].srvs.add({"name": "test_empty", "type": "std_srvs/srv/Empty", "var_name": "service", "callback": "service_callback"})
+        st.session_state["gen"].clients.add({"srv_name": "test_empty", "type": "std_srvs/srv/Empty", "var_name": "client"})
+        st.session_state["gen"].action_srvs.add({"name": "fibonacci", "var_name": "action_server_", "type": "tf2_msgs/action/LookupTransform", "handle_goal": "handle_goal", "handle_cancel": "handle_cancel", "handle_accepted": "handle_accepted", "execute": "execute"})
+        st.session_state["gen"].action_clients.add({"srv_name": "fibonacci", "var_name": "action_client_", "type": "tf2_msgs/action/LookupTransform", "goal_response_callback": "goal_response_cb", "feedback_callback": "feedback_response_cb", "result_callback": "result_response_cb"})
         st.session_state["gen"].sync_subs.add({
             "callback": "sync_callback",
             "sync_policy": "ApproximateTime",
             "queue_size": 4,
             "subs": [
                 {
-                    "msg_type": "sensor_msgs::msg::PointCloud2", 
+                    "msg_type": "sensor_msgs/msg/PointCloud2", 
                     "var_name": "rgbd_cloud_sub",
                     "topic": "/rgbd/points", 
                     "qos": {"is_default": "True", "queue_size": 4}
                 },
                 {
-                    "msg_type": "sensor_msgs::msg::Image", 
+                    "msg_type": "sensor_msgs/msg/Image", 
                     "var_name": "rgbd_img_sub",
                     "topic": "/rgbd/image", 
                     "qos": {"is_default": "True", "queue_size": 4}
