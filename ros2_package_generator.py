@@ -162,34 +162,58 @@ def add_publisher():
         else:
             st.error(error_str)
 
-@st.dialog("Add Parameter")
-def add_parameter():
+def update_parameter(param_name: str = None):
+    editing_param = {}
+    index = -1
+    if param_name:
+        editing_param, index = st.session_state['gen'].params.get(param_name)
     param_info = {}
-    param_info["name"] = st.text_input("Name")
-    param_info["type"] = st.selectbox("Type", options=st.session_state['autocompletes']['params'])
-    param_info["default"] = st.text_input("Default value")
+    param_info["name"] = st.text_input("Name", value=editing_param.get("name", ""))
+    param_type = editing_param.get("type", None)
+    param_index = get_index(param_type, st.session_state['autocompletes']['params']) if param_type else 0
+    param_info["type"] = st.selectbox("Type", st.session_state['autocompletes']['params'], index=param_index)
+    param_info["default"] = st.text_input("Default value", value=editing_param.get("default", ""))
+    if param_info["default"] == "":
+        st.error("You should enter default value")
     
     if st.button("Submit"):
-        res, error_str = st.session_state['gen'].params.validate(param_info)
+        res, error_str = st.session_state['gen'].params.validate(param_info, param_name != None)
         if res:
-            st.session_state['gen'].params.add(param_info)
+            if param_name:
+                st.session_state['gen'].params.update(param_info, index)
+            else:
+                st.session_state['gen'].params.add(param_info)
+            st.rerun()
+        else:
+            st.error(error_str)
+
+@st.dialog("Add Parameter")
+def add_parameter():
+    update_parameter()
+
+def update_timer(timer_var_name: str = None):
+    editing_timer = {}
+    index = -1
+    if timer_var_name:
+        editing_timer, index = st.session_state['gen'].timers.get(timer_var_name)
+    timer_info = {}
+    timer_info["var_name"] = st.text_input("Variable name", value=editing_timer.get("var_name", ""))
+    timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1, value=editing_timer.get("period", 1))
+    timer_info["callback"] = st.text_input("Callback function name", value=editing_timer.get("callback", ""))
+    if st.button("Submit"):
+        res, error_str = st.session_state['gen'].timers.validate(timer_info, timer_var_name != None)
+        if res:
+            if timer_var_name:
+                st.session_state['gen'].timers.update(timer_info, index)
+            else:
+                st.session_state['gen'].timers.add(timer_info)
             st.rerun()
         else:
             st.error(error_str)
 
 @st.dialog("Add Timer")
 def add_timer():
-    timer_info = {}
-    timer_info["var_name"] = st.text_input("Variable name")
-    timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1)
-    timer_info["callback"] = st.text_input("Callback function name")
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].timers.validate(timer_info)
-        if res:
-            st.session_state['gen'].timers.add(timer_info)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_timer()
 
 @st.dialog("Add Service server")
 def add_service():
@@ -398,36 +422,11 @@ def edit_subscriber(sub_var_name: str):
 
 @st.dialog("Edit Parameter")
 def edit_parameter(param_name: str):
-    editing_param, index = st.session_state['gen'].params.get(param_name)
-    param_info = {}
-    param_info["name"] = st.text_input("Name", value=editing_param.get("name", ""))
-    param_info["type"] = st.selectbox("Type", st.session_state['autocompletes']['params'], index=get_index(editing_param["type"], st.session_state['autocompletes']['params'], 0))
-    param_info["default"] = st.text_input("Default value", value=editing_param.get("default", ""))
-    if param_info["default"] == "":
-        st.error("You should enter default value")
-    
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].params.validate(param_info, True)
-        if res:
-            st.session_state['gen'].params.update(param_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_parameter(param_name)
 
 @st.dialog("Edit Timer")
 def edit_timer(timer_var_name: str):
-    editing_timer, index = st.session_state['gen'].timers.get(timer_var_name)
-    timer_info = {}
-    timer_info["var_name"] = st.text_input("Variable name", value=editing_timer.get("var_name", ""))
-    timer_info["period"] = st.number_input("Period in milliseconds", min_value=1, step=1, value=editing_timer.get("period", ""))
-    timer_info["callback"] = st.text_input("Callback function name", value=editing_timer.get("callback", ""))
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].timers.validate(timer_info, True)
-        if res:
-            st.session_state['gen'].timers.update(timer_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_timer(timer_var_name)
 
 @st.dialog("Edit Service server")
 def edit_service(srv_var_name: str):
