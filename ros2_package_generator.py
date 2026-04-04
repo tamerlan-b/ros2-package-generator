@@ -372,21 +372,19 @@ def update_action_client(action_client_var_name: str = None):
 def add_action_client():
     update_action_client()
 
-@st.dialog("Add synchronized subscriber")
-def __add_sync_sub():
+def update_sync_sub(sync_cb_name: str = None):
+    editing_sync_sub, index = {}, -1
+    if sync_cb_name:
+        editing_sync_sub, index = st.session_state['gen'].sync_subs.get(sync_cb_name)
     sync_sub_info = {}
-    sync_sub_info["callback"] = st.text_input("Synchronized callback function name")
-    policies = ["ExactTime", "ApproximateTime"]
-    if st.session_state["gen"]["ros_distro"] > "Humble":
-        sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", policies + ["ApproximateEpsilonTime", "LatestTime"])
-        if sync_sub_info["sync_policy"] == "ApproximateEpsilonTime":
-            sync_sub_info["epsilon"] = st.number_input("Epsilon (ms)", min_value=0, step=1, value=10)
-    else:
-        sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", policies)
-    sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1)
+    sync_sub_info["callback"] = st.text_input("Synchronized callback function name", value=editing_sync_sub.get("callback", ""))
+    sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"])
+    sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1, value=editing_sync_sub.get("queue_size", 1))
+    # "epsilon": "", # rclcpp::Duration (only for "ApproximateEpsilonTime")
     
     with st.form("Add subscription", clear_on_submit=True):
         st.subheader("Subscription params")
+        # TODO: add ability to edit subscribers
         sub_info = get_pub_sub_info()
         with st.expander('QoS settings'):
             sub_info["qos"] = add_qos()
@@ -408,13 +406,21 @@ def __add_sync_sub():
     
     if st.button("Submit"):
         sync_sub_info["subs"] = st.session_state['temp_subs'].copy()
-        res, error_str = st.session_state["gen"].sync_subs.validate(sync_sub_info)
+        res, error_str = st.session_state["gen"].sync_subs.validate(sync_sub_info, sync_cb_name != None)
         if res:
-            st.session_state["gen"].sync_subs.add(sync_sub_info)
+            if sync_cb_name:
+                st.session_state["gen"].sync_subs.update(sync_sub_info, index)
+            else:
+                st.session_state["gen"].sync_subs.add(sync_sub_info)
             st.session_state['temp_subs'] = []
             st.rerun()
         else:
             st.error(error_str)
+    pass
+
+@st.dialog("Add synchronized subscriber")
+def __add_sync_sub():
+    update_sync_sub()
 
 def add_sync_sub():
     st.session_state['temp_subs'] = []
@@ -454,45 +460,7 @@ def edit_action_client(action_client_var_name: str):
 
 @st.dialog("Edit synchronized subscriber")
 def __edit_sync_sub(sync_cb_name: str):
-    editing_sync_sub, index = st.session_state['gen'].sync_subs.get(sync_cb_name)
-    sync_sub_info = {}
-    sync_sub_info["callback"] = st.text_input("Synchronized callback function name", value=editing_sync_sub.get("callback", ""))
-    sync_sub_info["sync_policy"] = st.selectbox("Synchronization policy", ["ExactTime", "ApproximateTime"])
-    sync_sub_info["queue_size"] = st.number_input("Queue size", min_value=1, step=1, value=editing_sync_sub.get("queue_size", 1))
-    # "epsilon": "", # rclcpp::Duration (only for "ApproximateEpsilonTime")
-    
-    with st.form("Add subscription", clear_on_submit=True):
-        st.subheader("Subscription params")
-        # TODO: add ability to edit subscribers
-        sub_info = get_pub_sub_info()
-        with st.expander('QoS settings'):
-            sub_info["qos"] = add_qos()
-        if st.form_submit_button("Add topic"):
-            res, error_str = st.session_state["gen"].sync_subs.validate_sub(sub_info)
-            if res:
-                st.session_state['temp_subs'].append(sub_info)
-            else:
-                st.error(error_str)
-    
-    def remove_sub(var_name: str):
-        index = next(iter([i for i, s in enumerate(st.session_state['temp_subs']) if s["var_name"] == var_name]), -1)
-        if index >= 0:
-            del st.session_state['temp_subs'][index]
-    
-    for sub in st.session_state['temp_subs']:
-        var_name = sub["var_name"]
-        text_with_button(f'`{var_name}` (`{sub["msg_type"]}`)', "🗑️", help="Remove subscriber", on_click=lambda var=var_name: remove_sub(var), btn_key=var_name)
-    
-    if st.button("Submit"):
-        sync_sub_info["subs"] = st.session_state['temp_subs'].copy()
-        res, error_str = st.session_state["gen"].sync_subs.validate(sync_sub_info)
-        if res:
-            st.session_state["gen"].sync_subs.update(sync_sub_info, index)
-            st.session_state['temp_subs'] = []
-            st.rerun()
-        else:
-            st.error(error_str)
-    pass
+    update_sync_sub(sync_cb_name)
 
 def edit_sync_sub(sync_sub_var_name: str):
     # TODO: fill temp_subs
