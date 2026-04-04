@@ -236,56 +236,70 @@ def update_timer(timer_var_name: str = None):
 def add_timer():
     update_timer()
 
-@st.dialog("Add Service server")
-def add_service():
+def update_service(srv_var_name: str = None):
+    editing_srv, index = {}, -1
+    if srv_var_name:
+        editing_srv, index = st.session_state['gen'].srvs.get(srv_var_name)
     srv_info = {}
-    srv_info["name"] = st.text_input("Service name")
+    srv_info["name"] = st.text_input("Service name", value=editing_srv.get("name", ""))        
     tags = st_select(
         label='Type',
         placeholder='Press Enter to add',
-        value=[],
+        value=[] if 'type' not in editing_srv else [editing_srv["type"]],
         options=st.session_state['autocompletes']['srv'],
         maxtags=1,
         key="srvs_tags"
     )
     srv_info["type"] = None if len(tags) == 0 else tags[0]
-    srv_info["var_name"] = st.text_input("Variable name", placeholder="service")
-    srv_info["callback"] = st.text_input("Service handler method name", placeholder="add_two_ints")
+    srv_info["var_name"] = st.text_input("Variable name", value=editing_srv.get("var_name", ""))
+    srv_info["callback"] = st.text_input("Service handler method name", value=editing_srv.get("callback", ""))
     if srv_info["type"] != None:
-        st.code(
-            f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', 
-            language="cpp"
-        )
+        st.code(f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', language="cpp")
     
     if st.button("Submit"):
-        res, error_str = st.session_state['gen'].srvs.validate(srv_info)
+        res, error_str = st.session_state['gen'].srvs.validate(srv_info, srv_var_name != None)
         if res:
-            st.session_state['gen'].srvs.add(srv_info)
+            if srv_var_name:
+                st.session_state['gen'].srvs.update(srv_info, index)
+            else:
+                st.session_state['gen'].srvs.add(srv_info)
             st.rerun()
         else:
             st.error(error_str)
 
-@st.dialog("Add Service client")
-def add_client():
+@st.dialog("Add Service server")
+def add_service():
+    update_service()
+
+def update_client(client_var_name: str = None):
+    editing_client, index = {}, -1
+    if client_var_name:
+        editing_client, index = st.session_state['gen'].clients.get(client_var_name)
     client_info = {}
-    client_info["srv_name"] = st.text_input("Service name")
+    client_info["srv_name"] = st.text_input("Service name", value=editing_client.get("srv_name", ""))
     tags = st_select(
         label='Type',
         placeholder='Press Enter to add',
-        value=[],
+        value=[] if 'type' not in editing_client else [editing_client["type"]],
         options=st.session_state['autocompletes']['srv'],
         maxtags=1,
         key="srvs_tags"
     )
     client_info["type"] = None if len(tags) == 0 else tags[0]
-    client_info["var_name"] = st.text_input("Variable name", placeholder="client")
+    client_info["var_name"] = st.text_input("Variable name", value=editing_client.get("var_name", ""))
     if st.button("Submit"):
-        res, error_str = st.session_state['gen'].clients.validate(client_info)
+        res, error_str = st.session_state['gen'].clients.validate(client_info, client_var_name != None)
         if res:
-            st.session_state['gen'].clients.add(client_info)
+            if client_var_name:
+                st.session_state['gen'].clients.update(client_info, index)
+            else:
+                st.session_state['gen'].clients.add(client_info)
             st.rerun()
         else:
             st.error(error_str)
+@st.dialog("Add Service client")
+def add_client():
+    update_client()
 
 @st.dialog("Add Action server")
 def add_action_server():
@@ -408,53 +422,11 @@ def edit_timer(timer_var_name: str):
 
 @st.dialog("Edit Service server")
 def edit_service(srv_var_name: str):
-    editing_srv, index = st.session_state['gen'].srvs.get(srv_var_name)
-    srv_info = {}
-    srv_info["name"] = st.text_input("Service name", value=editing_srv.get("name", ""))        
-    tags = st_select(
-        label='Type',
-        placeholder='Press Enter to add',
-        value=[] if 'type' not in editing_srv else [editing_srv["type"]],
-        options=st.session_state['autocompletes']['srv'],
-        maxtags=1,
-        key="srvs_tags"
-    )
-    srv_info["type"] = None if len(tags) == 0 else tags[0]
-    srv_info["var_name"] = st.text_input("Variable name", value=editing_srv.get("var_name", ""))
-    srv_info["callback"] = st.text_input("Service handler method name", value=editing_srv.get("callback", ""))
-    if srv_info["type"] != None:
-        st.code(f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', language="cpp")
-    
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].srvs.validate(srv_info, True)
-        if res:
-            st.session_state['gen'].srvs.update(srv_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_service(srv_var_name)
 
 @st.dialog("Edit Service client")
 def edit_client(client_var_name: str):
-    editing_client, index = st.session_state['gen'].clients.get(client_var_name)
-    client_info = {}
-    client_info["srv_name"] = st.text_input("Service name", value=editing_client.get("srv_name", ""))
-    tags = st_select(
-        label='Type',
-        placeholder='Press Enter to add',
-        value=[] if 'type' not in editing_client else [editing_client["type"]],
-        options=st.session_state['autocompletes']['srv'],
-        maxtags=1,
-        key="srvs_tags"
-    )
-    client_info["type"] = None if len(tags) == 0 else tags[0]
-    client_info["var_name"] = st.text_input("Variable name", value=editing_client.get("var_name", ""))
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].clients.validate(client_info, True)
-        if res:
-            st.session_state['gen'].clients.update(client_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_client(client_var_name)
 
 @st.dialog("Edit Action server")
 def edit_action_server(action_srv_var_name: str):
