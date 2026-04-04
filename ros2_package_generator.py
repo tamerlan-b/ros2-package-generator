@@ -114,53 +114,74 @@ def get_pub_sub_info(prior_info: Dict={}) -> Dict:
     info["topic"] = st.text_input("Topic name", placeholder="/points", value=prior_info.get("topic", ""))
     return info
 
-@st.dialog("Add Subscriber")
-def add_subscriber():
-    sub_info = get_pub_sub_info()
-    sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback")
+def update_subscriber(sub_var_name: str = None):
+    editing_sub = {}
+    index = -1
+    if sub_var_name:
+        editing_sub, index = st.session_state['gen'].subs.get(sub_var_name)
+    sub_info = get_pub_sub_info(editing_sub)
+    sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback", value= "" if editing_sub == {} or 'callback' not in editing_sub.keys() else editing_sub["callback"])
     
     enable_type_adapter = False
     if st.session_state["gen"]["ros_distro"] >= "Humble":
-        enable_type_adapter = st.checkbox("Use Type Adapter", False)
+        enable_type_adapter = st.checkbox("Use Type Adapter", editing_sub.get("adapter_name", False))
+    
     if enable_type_adapter:
-        sub_info["cpp_type"] = st.text_input("C++ type for conversion")
-        sub_info["adapter_name"] = st.text_input("Adapter typename")
+        sub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_sub.get("cpp_type", ""))
+        sub_info["adapter_name"] = st.text_input("Adapter typename", editing_sub.get("adapter_name", ""))
         st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
     else:
         cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
-        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=0, horizontal=True)
+        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
         sub_info["callback_arg_type"] = cb_types[callback_arg_type]
         if sub_info.get("msg_type", None) != None:
             st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
-        sub_info["qos"] = add_qos()
+        sub_info["qos"] = add_qos(editing_sub.get("qos", {}))
     
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].subs.validate(sub_info)
+    if st.button("Apply"):
+        res, error_str = st.session_state['gen'].subs.validate(sub_info, sub_var_name != None)
         if res:
-            st.session_state['gen'].subs.add(sub_info)
+            if sub_var_name:
+                st.session_state['gen'].subs.update(sub_info, index)
+            else:
+                st.session_state['gen'].subs.add(sub_info)
+            st.rerun()
+        else:
+            st.error(error_str)
+
+@st.dialog("Add Subscriber")
+def add_subscriber():
+    update_subscriber()
+
+def update_publisher(pub_var_name: str = None):
+    editing_pub = {}
+    index  = -1
+    if pub_var_name:
+        editing_pub, index = st.session_state['gen'].pubs.get(pub_var_name)
+    pub_info = get_pub_sub_info(editing_pub)
+    enable_type_adapter = False
+    if st.session_state["gen"]["ros_distro"] >= "Humble":
+        enable_type_adapter = st.checkbox("Use Type Adapter", editing_pub.get("adapter_name", False))
+    if enable_type_adapter:
+        pub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_pub.get("cpp_type", ""))
+        pub_info["adapter_name"] = st.text_input("Adapter typename", editing_pub.get("adapter_name", ""))
+    with st.expander('QoS settings'):
+        pub_info["qos"] = add_qos(editing_pub.get("qos", {}))
+    if st.button("Apply"):
+        res, error_str = st.session_state['gen'].pubs.validate(pub_info, pub_var_name != None)
+        if res:
+            if pub_var_name:
+                st.session_state['gen'].pubs.update(pub_info, index)
+            else:
+                st.session_state['gen'].pubs.add(pub_info)
             st.rerun()
         else:
             st.error(error_str)
 
 @st.dialog("Add Publisher")
 def add_publisher():
-    pub_info = get_pub_sub_info()
-    enable_type_adapter = False
-    if st.session_state["gen"]["ros_distro"] >= "Humble":
-        enable_type_adapter = st.checkbox("Use Type Adapter", False)
-    if enable_type_adapter:
-        pub_info["cpp_type"] = st.text_input("C++ type for conversion")
-        pub_info["adapter_name"] = st.text_input("Adapter typename")
-    with st.expander('QoS settings'):
-        pub_info["qos"] = add_qos()
-    if st.button("Submit"):
-        res, error_str = st.session_state['gen'].pubs.validate(pub_info)
-        if res:
-            st.session_state['gen'].pubs.add(pub_info)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_publisher()
 
 def update_parameter(param_name: str = None):
     editing_param = {}
@@ -371,54 +392,11 @@ def add_sync_sub():
 
 @st.dialog("Edit Publisher")
 def edit_publisher(pub_var_name: str):
-    editing_pub, index = st.session_state['gen'].pubs.get(pub_var_name)
-    pub_info = get_pub_sub_info(editing_pub)
-    enable_type_adapter = False
-    if st.session_state["gen"]["ros_distro"] >= "Humble":
-        enable_type_adapter = st.checkbox("Use Type Adapter", editing_pub.get("adapter_name", False))
-    if enable_type_adapter:
-        pub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_pub.get("cpp_type", ""))
-        pub_info["adapter_name"] = st.text_input("Adapter typename", editing_pub.get("adapter_name", ""))
-    with st.expander('QoS settings'):
-        pub_info["qos"] = add_qos(editing_pub["qos"])
-    if st.button("Apply"):
-        res, error_str = st.session_state['gen'].pubs.validate(pub_info, True)
-        if res:
-            st.session_state['gen'].pubs.update(pub_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_publisher(pub_var_name)
 
 @st.dialog("Edit Subscriber")
 def edit_subscriber(sub_var_name: str):
-    editing_sub, index = st.session_state['gen'].subs.get(sub_var_name)
-    sub_info = get_pub_sub_info(editing_sub)
-    sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback", value= "" if editing_sub == {} or 'callback' not in editing_sub.keys() else editing_sub["callback"])
-    
-    enable_type_adapter = False
-    if st.session_state["gen"]["ros_distro"] >= "Humble":
-        enable_type_adapter = st.checkbox("Use Type Adapter", editing_sub.get("adapter_name", False))
-    
-    if enable_type_adapter:
-        sub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_sub.get("cpp_type", ""))
-        sub_info["adapter_name"] = st.text_input("Adapter typename", editing_sub.get("adapter_name", ""))
-        st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
-    else:
-        cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
-        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
-        sub_info["callback_arg_type"] = cb_types[callback_arg_type]
-        if sub_info.get("msg_type", None) != None:
-            st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
-    with st.expander('QoS settings'):
-        sub_info["qos"] = add_qos(editing_sub["qos"])
-    
-    if st.button("Apply"):
-        res, error_str = st.session_state['gen'].subs.validate(sub_info, True)
-        if res:
-            st.session_state['gen'].subs.update(sub_info, index)
-            st.rerun()
-        else:
-            st.error(error_str)
+    update_subscriber(sub_var_name)
 
 @st.dialog("Edit Parameter")
 def edit_parameter(param_name: str):
