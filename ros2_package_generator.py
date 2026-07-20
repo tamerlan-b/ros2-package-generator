@@ -611,23 +611,20 @@ with col_elems:
                 var_name = client["var_name"]
                 checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
             
-            if is_python:
-                st.caption("Action servers/clients and synchronized subscribers currently support C++ only.")
-            else:
-                text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
-                for action_srv in st.session_state['gen']["action_servers"]:
-                    var_name = action_srv["var_name"]
-                    checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
+            text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
+            for action_srv in st.session_state['gen']["action_servers"]:
+                var_name = action_srv["var_name"]
+                checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
 
-                text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
-                for action_client in st.session_state['gen']["action_clients"]:
-                    var_name = action_client["var_name"]
-                    checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
+            text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
+            for action_client in st.session_state['gen']["action_clients"]:
+                var_name = action_client["var_name"]
+                checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
 
-                text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscriber", on_click=lambda: add_sync_sub())
-                for sync_sub in st.session_state['gen']["sync_subscribers"]:
-                    cb_name = sync_sub["callback"]
-                    checkboxes['sync_sub'][cb_name] = checkboxes_with_button(f'`{cb_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=cb_name, on_click=lambda var=cb_name: edit_sync_sub(var))
+            text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscriber", on_click=lambda: add_sync_sub())
+            for sync_sub in st.session_state['gen']["sync_subscribers"]:
+                cb_name = sync_sub["callback"]
+                checkboxes['sync_sub'][cb_name] = checkboxes_with_button(f'`{cb_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=cb_name, on_click=lambda var=cb_name: edit_sync_sub(var))
 
             # Remove selected items
             if st.button("Remove selected items 🗑️", type="primary"):

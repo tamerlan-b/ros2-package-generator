@@ -31,8 +31,8 @@ Support for all major ROS2 node elements:
 - [x] **🔧 Services** (servers and clients)
 - [x] **⏱️ Timers** (periodic callbacks)
 - [x] **⚙️ Parameters** (declaration and initialization)
-- [x] **🎯 Actions** (action servers and clients, C++ only)
-- [x] **🔀 Synchronized subscribers** via [message_filters](https://github.com/ros2/message_filters) (C++ only)
+- [x] **🎯 Actions** (action servers and clients)
+- [x] **🔀 Synchronized subscribers** via [message_filters](https://github.com/ros2/message_filters)
 
 ##### 🎨 **Visual Constructor**
 Intuitive interface for:
@@ -116,7 +116,7 @@ streamlit run ros2_package_generator.py
 - [ ] Visualize package structure (with directories)
 - [x] Support newer ROS2 distros
 - [x] Add Python (`rclpy`) node generation (publishers, subscribers, timers, parameters, services, TF listener)
-- [ ] Add Python support for actions and synchronized subscribers (`message_filters`)
+- [x] Add Python support for actions and synchronized subscribers (`message_filters`)
 
 | ROS2 Distro | Basic support (code can be compiled) | Extended support (new features) |
 |-|:-:|:-:|

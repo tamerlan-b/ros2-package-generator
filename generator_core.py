@@ -76,6 +76,15 @@ PARAM_PY_ACCESSORS = {
     "std::vector<std::string>": "string_array_value",
 }
 
+# Maps the C++-flavored message_filters sync policy names to their rclpy
+# equivalents. Python message_filters only ships Time/ApproximateTime
+# synchronizers - ApproximateEpsilonTime is a C++-only policy with no rclpy
+# binding, so it's deliberately excluded here (see __update_py_sync_info).
+PY_SYNC_POLICIES = {
+    "ExactTime": "TimeSynchronizer",
+    "ApproximateTime": "ApproximateTimeSynchronizer",
+}
+
 def cpp_param_default_to_py(cpp_type: str, default: str) -> str:
     """
     Convert a C++ parameter default literal (as stored by the shared ParamManager)
@@ -331,6 +340,7 @@ class ActionServerManager(NodeItemManagerBase):
         action_srv_include = f"{action_srv_type_snake}.hpp"
         info["depends"] = [action_srv_pkg]
         info["includes"] = [action_srv_include]
+        info["py_module"], info["py_class"] = to_py_import(info["type"])
         super().add(info)
     
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
@@ -366,6 +376,7 @@ class ActionClientManager(NodeItemManagerBase):
         action_client_include = f"{action_client_type_snake}.hpp"
         info["depends"] = [action_client_pkg]
         info["includes"] = [action_client_include]
+        info["py_module"], info["py_class"] = to_py_import(info["type"])
         super().add(info)
     
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
@@ -401,6 +412,7 @@ class SyncSubManager(NodeItemManagerBase):
             msg_include = f"{msg_type_snake}.hpp"
             s["depends"] = [msg_pkg]
             s["includes"] = [msg_include]
+            s["py_module"], s["py_class"] = to_py_import(s["msg_type"])
         super().add(info)
 
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
@@ -556,7 +568,10 @@ class Ros2PkgGenerator:
             deps.update(action_client["depends"])
             includes.update(action_client["includes"])
         
-        if len(action_servers) + len(action_clients) > 0:
+        # rclpy's action support lives inside the main rclpy package (imported
+        # as rclpy.action), unlike C++ which needs the separate rclcpp_action
+        # package - so this dep/include only applies to the C++ path.
+        if self.config.get("language", "cpp").lower() == "cpp" and len(action_servers) + len(action_clients) > 0:
             deps.add("rclcpp_action")
             includes.add("rclcpp_action/rclcpp_action.hpp")
         
@@ -585,12 +600,31 @@ class Ros2PkgGenerator:
             imports.add((s["py_module"], s["py_class"]))
         for c in self.config.get("clients", []):
             imports.add((c["py_module"], c["py_class"]))
+        for a in self.config.get("action_servers", []):
+            imports.add((a["py_module"], a["py_class"]))
+        for a in self.config.get("action_clients", []):
+            imports.add((a["py_module"], a["py_class"]))
+        for sync_sub in self.config.get("sync_subscribers", []):
+            for s in sync_sub["subs"]:
+                imports.add((s["py_module"], s["py_class"]))
         self.config['py_imports'] = sorted(imports)
 
     def __update_py_param_info(self):
         for par in self.config.get("params", []):
             par["py_accessor"] = PARAM_PY_ACCESSORS.get(par["type"], "string_value")
             par["py_default"] = cpp_param_default_to_py(par["type"], par["default"])
+
+    def __update_py_sync_info(self):
+        for sync_sub in self.config.get("sync_subscribers", []):
+            policy = sync_sub["sync_policy"]
+            if policy not in PY_SYNC_POLICIES:
+                raise ValueError(
+                    f"Sync policy '{policy}' has no Python (message_filters) equivalent; "
+                    f"supported policies for Python nodes are: {', '.join(PY_SYNC_POLICIES)}"
+                )
+            sync_sub["py_sync_class"] = PY_SYNC_POLICIES[policy]
+            if sync_sub["py_sync_class"] == "ApproximateTimeSynchronizer":
+                sync_sub["py_slop"] = float(sync_sub["epsilon"]) / 1000.0 if "epsilon" in sync_sub else 0.1
 
     def generate_files(self):
         self.__update_includes()
@@ -601,6 +635,7 @@ class Ros2PkgGenerator:
         if language == "python":
             self.__update_py_imports()
             self.__update_py_param_info()
+            self.__update_py_sync_info()
             return {
                 f'{self.config["node_filename"]}.py': self.py_templates['py'].render(**self.config),
                 '__init__.py': '',

@@ -10,6 +10,16 @@ from rclpy.qos import QoSProfile, HistoryPolicy, ReliabilityPolicy, DurabilityPo
 {% if tf_listener %}
 import tf2_ros
 {% endif %}
+{% if action_servers %}
+from rclpy.action import ActionServer, GoalResponse, CancelResponse
+{% endif %}
+{% if action_clients %}
+from rclpy.action import ActionClient
+from action_msgs.msg import GoalStatus
+{% endif %}
+{% if sync_subscribers %}
+from message_filters import Subscriber, TimeSynchronizer, ApproximateTimeSynchronizer
+{% endif %}
 {% for module, cls in py_imports %}
 from {{ module }} import {{ cls }}
 {% endfor %}
@@ -89,6 +99,37 @@ class {{ node_classname }}(Node):
         while not self.{{ client.var_name }}.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("{{ client.srv_name }} service not available, waiting again...")
         {% endfor %}
+        {% if action_servers %}
+        # Action servers
+        {% endif %}
+        {% for action_srv in action_servers %}
+        self.{{ action_srv.var_name }} = ActionServer(
+            self,
+            {{ action_srv.py_class }},
+            "{{ action_srv.name }}",
+            execute_callback=self.{{ action_srv.execute }},
+            goal_callback=self.{{ action_srv.handle_goal }},
+            handle_accepted_callback=self.{{ action_srv.handle_accepted }},
+            cancel_callback=self.{{ action_srv.handle_cancel }},
+        )
+        {% endfor %}
+        {% if action_clients %}
+        # Action clients
+        {% endif %}
+        {% for action_client in action_clients %}
+        self.{{ action_client.var_name }} = ActionClient(self, {{ action_client.py_class }}, "{{ action_client.srv_name }}")
+        self.{{ action_client.var_name }}_once_timer = self.create_timer(0.5, self.{{ action_client.var_name }}_once_timer_cb)
+        {% endfor %}
+        {% if sync_subscribers %}
+        # Synchronized subscribers (message_filters)
+        {% endif %}
+        {% for sync_sub in sync_subscribers %}
+        {% for sub in sync_sub.subs %}
+        self.{{ sub.var_name }} = Subscriber(self, {{ sub.py_class }}, "{{ sub.topic }}")
+        {% endfor %}
+        self.{{ sync_sub.callback }}_sync = {{ sync_sub.py_sync_class }}([{% for sub in sync_sub.subs %}self.{{ sub.var_name }}{% if not loop.last %}, {% endif %}{% endfor %}], {{ sync_sub.queue_size }}{% if sync_sub.py_slop is defined %}, {{ sync_sub.py_slop }}{% endif %})
+        self.{{ sync_sub.callback }}_sync.registerCallback(self.{{ sync_sub.callback }})
+        {% endfor %}
 
     {% for sub in subscribers %}
     def {{ sub.callback }}(self, msg: {{ sub.py_class }}):
@@ -106,6 +147,75 @@ class {{ node_classname }}(Node):
     def {{ srv.callback }}(self, request: {{ srv.py_class }}.Request, response: {{ srv.py_class }}.Response) -> {{ srv.py_class }}.Response:
         # TODO: add implementation
         return response
+
+    {% endfor %}
+    {% for action_srv in action_servers %}
+    def {{ action_srv.handle_goal }}(self, goal_request) -> GoalResponse:
+        # TODO: add implementation
+        return GoalResponse.ACCEPT
+
+    def {{ action_srv.handle_cancel }}(self, goal_handle) -> CancelResponse:
+        # TODO: add implementation
+        return CancelResponse.ACCEPT
+
+    def {{ action_srv.handle_accepted }}(self, goal_handle):
+        # TODO: change implementation if necessary
+        goal_handle.execute()
+
+    def {{ action_srv.execute }}(self, goal_handle) -> {{ action_srv.py_class }}.Result:
+        # TODO: add implementation
+        feedback_msg = {{ action_srv.py_class }}.Feedback()
+        # TODO: update feedback
+        goal_handle.publish_feedback(feedback_msg)
+
+        result = {{ action_srv.py_class }}.Result()
+        # TODO: update result
+        goal_handle.succeed()
+        return result
+
+    {% endfor %}
+    {% for action_client in action_clients %}
+    def {{ action_client.var_name }}_once_timer_cb(self):
+        # TODO: change implementation if necessary
+        self.{{ action_client.var_name }}_once_timer.cancel()
+        self.{{ action_client.var_name }}.wait_for_server()
+
+        goal_msg = {{ action_client.py_class }}.Goal()
+        # TODO: fill goal_msg
+
+        send_goal_future = self.{{ action_client.var_name }}.send_goal_async(
+            goal_msg, feedback_callback=self.{{ action_client.feedback_callback }})
+        send_goal_future.add_done_callback(self.{{ action_client.goal_response_callback }})
+
+    def {{ action_client.goal_response_callback }}(self, future):
+        # TODO: change implementation if necessary
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().error("Goal was rejected by server")
+            return
+        self.get_logger().info("Goal accepted by server, waiting for result")
+
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self.{{ action_client.result_callback }})
+
+    def {{ action_client.feedback_callback }}(self, feedback_msg):
+        # TODO: add implementation
+        pass
+
+    def {{ action_client.result_callback }}(self, future):
+        # TODO: change implementation if necessary
+        result = future.result().result
+        status = future.result().status
+        if status == GoalStatus.STATUS_SUCCEEDED:
+            pass
+        else:
+            self.get_logger().error(f"Goal failed with status: {status}")
+
+    {% endfor %}
+    {% for sync_sub in sync_subscribers %}
+    def {{ sync_sub.callback }}(self{% for sub in sync_sub.subs %}, {{ sub.var_name }}_msg{% endfor %}):
+        # TODO: add implementation
+        pass
 
     {% endfor %}
 
