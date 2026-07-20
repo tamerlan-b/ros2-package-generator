@@ -4,9 +4,22 @@ import streamlit as st
 from streamlit_tags import st_tags
 import zipfile
 import io
+import re
 from typing import List, Dict, Any
 from generator_core import Ros2PkgGenerator
 from node_visualization import draw_node
+
+_UNSAFE_PATH_CHARS_RE = re.compile(r'[^A-Za-z0-9_-]+')
+
+def sanitize_path_component(name: str, default: str) -> str:
+    """
+    Keep only filesystem-safe characters in a single zip/path segment.
+    Strips '/', '\\', '..' and the like so user-supplied package/file names
+    can't escape the archive root (zip-slip) when used to build zip entry
+    paths below.
+    """
+    cleaned = _UNSAFE_PATH_CHARS_RE.sub('_', name or '').strip('_')
+    return cleaned or default
 
 st.title("ROS2 Package Generator")
 
@@ -635,8 +648,10 @@ with col_elems:
 
 with col_code:
 
-    def create_package_archive_structure(pkg_name: str, node_name: str, 
+    def create_package_archive_structure(pkg_name: str, node_name: str,
                                         files_content: Dict[str, str]) -> io.BytesIO:
+        pkg_name = sanitize_path_component(pkg_name, "my_package")
+        node_name = sanitize_path_component(node_name, "node")
         zip_buffer = io.BytesIO()
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -661,6 +676,8 @@ with col_code:
 
     def create_python_package_archive_structure(pkg_name: str, node_filename: str,
                                                 files_content: Dict[str, str]) -> io.BytesIO:
+        pkg_name = sanitize_path_component(pkg_name, "my_package")
+        node_filename = sanitize_path_component(node_filename, "node")
         zip_buffer = io.BytesIO()
 
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -700,7 +717,7 @@ with col_code:
         st.download_button(
             "📦 Download Package",
             data=zip_buffer,
-            file_name=f'{st.session_state["gen"]["package_name"]}.zip',
+            file_name=f'{sanitize_path_component(st.session_state["gen"]["package_name"], "my_package")}.zip',
             mime="application/zip"
         )
 
