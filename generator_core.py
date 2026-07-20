@@ -46,9 +46,51 @@ def convert_ros_format_generic(ros_type: str) -> Tuple[str, str]:
     Returns:
         Tuple[str, str]: (c++ include header, package_name). Example: ("sensor_msgs/msg/image.hpp", "sensor_msgs")
     """
-    
+
     pkg_name, interface_type, type = split_ros2_type(ros_type)
     return to_cpp_include(pkg_name, interface_type, type), pkg_name
+
+def to_py_import(ros_type: str) -> Tuple[str, str]:
+    """
+    Convert ROS type to a python module and class name.
+    Works for msg, srv, and action types.
+
+    Args:
+        ros_type (str): ROS2 interface. For example: "sensor_msgs/msg/Image"
+
+    Returns:
+        Tuple[str, str]: (python module, class name). Example: ("sensor_msgs.msg", "Image")
+    """
+    pkg_name, interface_type, type = split_ros2_type(ros_type)
+    return f"{pkg_name}.{interface_type}", type
+
+# Maps the C++-flavored parameter type strings used by the UI/templates to the
+# rclpy ParameterValue accessor that must be used to read them back.
+PARAM_PY_ACCESSORS = {
+    "bool": "bool_value",
+    "int": "integer_value",
+    "double": "double_value",
+    "std::string": "string_value",
+    "std::vector<int>": "integer_array_value",
+    "std::vector<double>": "double_array_value",
+    "std::vector<std::string>": "string_array_value",
+}
+
+def cpp_param_default_to_py(cpp_type: str, default: str) -> str:
+    """
+    Convert a C++ parameter default literal (as stored by the shared ParamManager)
+    into an equivalent Python literal for rclpy's declare_parameter().
+
+    bool: true/false -> True/False
+    vector<...>: {1, 2, 3} -> [1, 2, 3]
+    int/double/string: unchanged (C++ and Python share that literal syntax)
+    """
+    default = str(default).strip()
+    if cpp_type == "bool":
+        return "True" if default.lower() in ("true", "1") else "False"
+    if cpp_type.startswith("std::vector<"):
+        return "[" + default.strip().strip("{}").strip() + "]"
+    return default
 
 def has_keys(dictionary, keys):
     return all(key in dictionary for key in keys)
@@ -121,9 +163,10 @@ class SubManager(NodeItemManagerBase):
         msg_include = f"{msg_type_snake}.hpp"
         info["depends"] = [msg_pkg]
         info["includes"] = [msg_include]
-        
+        info["py_module"], info["py_class"] = to_py_import(info["msg_type"])
+
         super().add(info)
-    
+
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
         if info.get("msg_type", None) == None:
             return False, "Message type is empty"
@@ -155,7 +198,8 @@ class PubManager(NodeItemManagerBase):
         msg_include = f"{msg_type_snake}.hpp"
         info["depends"] = [msg_pkg]
         info["includes"] = [msg_include]
-        
+        info["py_module"], info["py_class"] = to_py_import(info["msg_type"])
+
         super().add(info)
 
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
@@ -228,6 +272,7 @@ class ServiceManager(NodeItemManagerBase):
         srv_include = f"{srv_type_snake}.hpp"
         info["depends"] = [srv_pkg]
         info["includes"] = [srv_include]
+        info["py_module"], info["py_class"] = to_py_import(info["type"])
         super().add(info)
     
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
@@ -258,6 +303,7 @@ class ClientManager(NodeItemManagerBase):
         client_include = f"{client_type_snake}.hpp"
         info["depends"] = [client_pkg]
         info["includes"] = [client_include]
+        info["py_module"], info["py_class"] = to_py_import(info["type"])
         super().add(info)
     
     def validate(self, info: Dict, skip_name: bool = False) -> Tuple[bool, str]:
@@ -380,32 +426,33 @@ class SyncSubManager(NodeItemManagerBase):
 class Ros2PkgGenerator:
     
     def __init__(self, config = {}):
-        
-        if config != {}:
-            self.config = config
-            # TODO: add items correctly (with add methods)
-        else:
-            self.config = {
-                "node_filename": "node",
-                'node_classname': 'MyNode',
-                'node_name': 'my_node',
-                'is_component': True,
-                'include_pkgs': set(),
-                'includes': set(),
-                'params': [],
-                'publishers': [],
-                'subscribers': [],
-                'timers': [],
-                'services': [],
-                'clients': [],
-                'action_servers': [],
-                'action_clients': [],
-                'sync_subscribers': [],
-                "package_name": "my_package",
-                "cmake_target_name": "my_library",
-                "ros_distro": "Foxy"
-            }
-        
+
+        default_config = {
+            "node_filename": "node",
+            'node_classname': 'MyNode',
+            'node_name': 'my_node',
+            'is_component': True,
+            'include_pkgs': set(),
+            'includes': set(),
+            'params': [],
+            'publishers': [],
+            'subscribers': [],
+            'timers': [],
+            'services': [],
+            'clients': [],
+            'action_servers': [],
+            'action_clients': [],
+            'sync_subscribers': [],
+            "package_name": "my_package",
+            "cmake_target_name": "my_library",
+            "ros_distro": "Foxy",
+            "language": "cpp"
+        }
+        # Merge so partially-specified configs (e.g. test fixtures that only set
+        # the fields they care about) don't KeyError on the untouched ones.
+        self.config = {**default_config, **config}
+
+
         self.subs = SubManager(self.config["subscribers"])
         self.pubs = PubManager(self.config["publishers"])
         self.timers = TimerManager(self.config["timers"])
@@ -431,7 +478,15 @@ class Ros2PkgGenerator:
                 'xml': self.env.get_template(f'{distro}/package.xml.jinja2'),
                 'cmake': self.env.get_template(f'{distro}/CMakeLists.txt.jinja2'),
             }
-    
+
+        # Python (rclpy) templates are distro-agnostic, unlike the C++ ones above
+        self.py_templates = {
+            'py': self.env.get_template('common/node.py.jinja2'),
+            'setup': self.env.get_template('common/setup.py.jinja2'),
+            'setup_cfg': self.env.get_template('common/setup.cfg.jinja2'),
+            'xml': self.env.get_template('common/package.xml.jinja2'),
+        }
+
     def get_callback_types(self, ros_distro: str) -> Dict:
         if ros_distro.lower() < 'humble':
             return {"Object": "", "UniquePtr": "::UniquePtr", "SharedPtr": "::SharedPtr", "ConstSharedPtr": "::ConstSharedPtr"}
@@ -519,15 +574,45 @@ class Ros2PkgGenerator:
 
         self.config['include_pkgs'] = deps
         self.config['includes'] = includes
-    
+
+    def __update_py_imports(self):
+        imports = set()
+        for s in self.config.get("subscribers", []):
+            imports.add((s["py_module"], s["py_class"]))
+        for p in self.config.get("publishers", []):
+            imports.add((p["py_module"], p["py_class"]))
+        for s in self.config.get("services", []):
+            imports.add((s["py_module"], s["py_class"]))
+        for c in self.config.get("clients", []):
+            imports.add((c["py_module"], c["py_class"]))
+        self.config['py_imports'] = sorted(imports)
+
+    def __update_py_param_info(self):
+        for par in self.config.get("params", []):
+            par["py_accessor"] = PARAM_PY_ACCESSORS.get(par["type"], "string_value")
+            par["py_default"] = cpp_param_default_to_py(par["type"], par["default"])
+
     def generate_files(self):
         self.__update_includes()
         self.config["advertisement"] = "The package was created using ros2-package-generator: https://ros2-package-generator.onrender.com/"
         distro = self.config.get("ros_distro", "Foxy").lower()
-        # print(distro)
+        language = self.config.get("language", "cpp").lower()
+
+        if language == "python":
+            self.__update_py_imports()
+            self.__update_py_param_info()
+            return {
+                f'{self.config["node_filename"]}.py': self.py_templates['py'].render(**self.config),
+                '__init__.py': '',
+                'setup.py': self.py_templates['setup'].render(**self.config),
+                'setup.cfg': self.py_templates['setup_cfg'].render(**self.config),
+                'resource': '',
+                'package.xml': self.py_templates['xml'].render(**self.config),
+            }
+
         return {
-            f'{self.config["node_filename"]}.hpp': self.templates[distro]['hpp'].render(**self.config), 
-            f'{self.config["node_filename"]}.cpp': self.templates[distro]['cpp'].render(**self.config), 
-            "CMakeLists.txt": self.templates[distro]['cmake'].render(**self.config), 
+            f'{self.config["node_filename"]}.hpp': self.templates[distro]['hpp'].render(**self.config),
+            f'{self.config["node_filename"]}.cpp': self.templates[distro]['cpp'].render(**self.config),
+            "CMakeLists.txt": self.templates[distro]['cmake'].render(**self.config),
             'package.xml': self.templates[distro]['xml'].render(**self.config),
         }

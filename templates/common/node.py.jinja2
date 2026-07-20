@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+{% if advertisement %}
+# {{ advertisement }}
+{% endif %}
+import rclpy
+from rclpy.node import Node
+{% if publishers or subscribers %}
+from rclpy.qos import QoSProfile, HistoryPolicy, ReliabilityPolicy, DurabilityPolicy
+{% endif %}
+{% if tf_listener %}
+import tf2_ros
+{% endif %}
+{% for module, cls in py_imports %}
+from {{ module }} import {{ cls }}
+{% endfor %}
+
+
+class {{ node_classname }}(Node):
+    def __init__(self):
+        super().__init__("{{ node_name }}")
+        {% if tf_listener %}
+        # TF
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        {% endif %}
+        {% if params %}
+        # Parameters
+        {% endif %}
+        {% for par in params %}
+        self.declare_parameter("{{ par.name }}", {{ par.py_default }})
+        self.{{ par.name }} = self.get_parameter("{{ par.name }}").get_parameter_value().{{ par.py_accessor }}
+        {% endfor %}
+        {% if publishers %}
+        # Publishers
+        {% endif %}
+        {% for pub in publishers %}
+        self.{{ pub.var_name }} = self.create_publisher(
+            {{ pub.py_class }},
+            "{{ pub.topic }}",
+            {% if pub.qos.is_default %}
+            {{ pub.qos.queue_size }}
+            {% else %}
+            QoSProfile(
+                history=HistoryPolicy.{{ "KEEP_ALL" if pub.qos.is_keep_all else "KEEP_LAST" }},
+                reliability=ReliabilityPolicy.{{ "BEST_EFFORT" if pub.qos.is_best_effort else "RELIABLE" }},
+                durability=DurabilityPolicy.{{ "TRANSIENT_LOCAL" if pub.qos.is_transient_local else "VOLATILE" }},
+                depth={{ pub.qos.queue_size }},
+            )
+            {% endif %}
+        )
+        {% endfor %}
+        {% if subscribers %}
+        # Subscribers
+        {% endif %}
+        {% for sub in subscribers %}
+        self.{{ sub.var_name }} = self.create_subscription(
+            {{ sub.py_class }},
+            "{{ sub.topic }}",
+            self.{{ sub.callback }},
+            {% if sub.qos.is_default %}
+            {{ sub.qos.queue_size }}
+            {% else %}
+            QoSProfile(
+                history=HistoryPolicy.{{ "KEEP_ALL" if sub.qos.is_keep_all else "KEEP_LAST" }},
+                reliability=ReliabilityPolicy.{{ "BEST_EFFORT" if sub.qos.is_best_effort else "RELIABLE" }},
+                durability=DurabilityPolicy.{{ "TRANSIENT_LOCAL" if sub.qos.is_transient_local else "VOLATILE" }},
+                depth={{ sub.qos.queue_size }},
+            )
+            {% endif %}
+        )
+        {% endfor %}
+        {% if timers %}
+        # Timers
+        {% endif %}
+        {% for tim in timers %}
+        self.{{ tim.var_name }} = self.create_timer({{ tim.period }} / 1000.0, self.{{ tim.callback }})
+        {% endfor %}
+        {% if services %}
+        # Service servers
+        {% endif %}
+        {% for srv in services %}
+        self.{{ srv.var_name }} = self.create_service({{ srv.py_class }}, "{{ srv.name }}", self.{{ srv.callback }})
+        {% endfor %}
+        {% if clients %}
+        # Service clients
+        {% endif %}
+        {% for client in clients %}
+        self.{{ client.var_name }} = self.create_client({{ client.py_class }}, "{{ client.srv_name }}")
+        while not self.{{ client.var_name }}.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("{{ client.srv_name }} service not available, waiting again...")
+        {% endfor %}
+
+    {% for sub in subscribers %}
+    def {{ sub.callback }}(self, msg: {{ sub.py_class }}):
+        # TODO: add implementation
+        pass
+
+    {% endfor %}
+    {% for tim in timers %}
+    def {{ tim.callback }}(self):
+        # TODO: add implementation
+        pass
+
+    {% endfor %}
+    {% for srv in services %}
+    def {{ srv.callback }}(self, request: {{ srv.py_class }}.Request, response: {{ srv.py_class }}.Response) -> {{ srv.py_class }}.Response:
+        # TODO: add implementation
+        return response
+
+    {% endfor %}
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = {{ node_classname }}()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

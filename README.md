@@ -1,6 +1,6 @@
 # ROS2 Package Generator
 
-Tool for quickly creating ROS2 Foxy packages with C++ node
+Tool for quickly creating ROS2 packages with a C++ or Python node
 
 **Try demo here:** https://ros2-package-generator.onrender.com/
 
@@ -13,11 +13,16 @@ Complete ROS2 package with proper structure (CMakeLists.txt, package.xml, .hpp, 
 
 ##### 📝 **Zero Boilerplate Code**
 Automatic generation of all template constructs. No more manual writing of:
-- Classes inheriting from `rclcpp::Node`
+- Classes inheriting from `rclcpp::Node` / `rclpy.node.Node`
 - Publisher/subscriber declarations
 - Constructor initialization
 - Callback functions
 - Node parameters
+
+##### 🐍 **C++ and Python nodes**
+Pick a language per node:
+- **C++** (`rclcpp`): publishers, subscribers, timers, parameters, services, actions, synchronized subscribers
+- **Python** (`rclpy`): publishers, subscribers, timers, parameters, services and a TF listener — actions and synchronized subscribers are C++-only for now (see TODO)
 
 ##### 🔄 **All ROS2 Component Types**
 Support for all major ROS2 node elements:
@@ -26,8 +31,8 @@ Support for all major ROS2 node elements:
 - [x] **🔧 Services** (servers and clients)
 - [x] **⏱️ Timers** (periodic callbacks)
 - [x] **⚙️ Parameters** (declaration and initialization)
-- [x] **🎯 Actions** (action servers and clients)
-- [x] **🔀 Synchronized subscribers** via [message_filters](https://github.com/ros2/message_filters)
+- [x] **🎯 Actions** (action servers and clients, C++ only)
+- [x] **🔀 Synchronized subscribers** via [message_filters](https://github.com/ros2/message_filters) (C++ only)
 
 ##### 🎨 **Visual Constructor**
 Intuitive interface for:
@@ -51,7 +56,7 @@ Live preview of all generated files:
 ##### ⚡ **One-Click Export**
 Ready-to-use package structure:
 - 📦 **ZIP archive** with complete ROS2 package structure
-- 📁 **Automatic structure**:
+- 📁 **Automatic structure** (C++, `ament_cmake`):
   ```
   my_package/
   ├── include/my_package/node.hpp
@@ -59,6 +64,17 @@ Ready-to-use package structure:
   ├── CMakeLists.txt
   ├── package.xml
   └── README.md
+  ```
+- 📁 **Automatic structure** (Python, `ament_python`):
+  ```
+  my_package/
+  ├── my_package/
+  │   ├── __init__.py
+  │   └── node.py
+  ├── resource/my_package
+  ├── setup.py
+  ├── setup.cfg
+  └── package.xml
   ```
 - 🚀 **Build-ready** with `colcon build`
 
@@ -99,6 +115,8 @@ streamlit run ros2_package_generator.py
 - [x] Add download button for generated files
 - [ ] Visualize package structure (with directories)
 - [x] Support newer ROS2 distros
+- [x] Add Python (`rclpy`) node generation (publishers, subscribers, timers, parameters, services, TF listener)
+- [ ] Add Python support for actions and synchronized subscribers (`message_filters`)
 
 | ROS2 Distro | Basic support (code can be compiled) | Extended support (new features) |
 |-|:-:|:-:|

@@ -120,21 +120,28 @@ def update_subscriber(sub_var_name: str = None):
         editing_sub, index = st.session_state['gen'].subs.get(sub_var_name)
     sub_info = get_pub_sub_info(editing_sub)
     sub_info["callback"] = st.text_input("Callback function name", placeholder="cloud_callback", value= "" if editing_sub == {} or 'callback' not in editing_sub.keys() else editing_sub["callback"])
-    
-    enable_type_adapter = False
-    if st.session_state["gen"]["ros_distro"] >= "Humble":
-        enable_type_adapter = st.checkbox("Use Type Adapter", editing_sub.get("adapter_name", False))
-    
-    if enable_type_adapter:
-        sub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_sub.get("cpp_type", ""))
-        sub_info["adapter_name"] = st.text_input("Adapter typename", editing_sub.get("adapter_name", ""))
-        st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
-    else:
-        cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
-        callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
-        sub_info["callback_arg_type"] = cb_types[callback_arg_type]
+
+    is_python = st.session_state["gen"]["language"] == "python"
+    if is_python:
+        sub_info["callback_arg_type"] = ""
         if sub_info.get("msg_type", None) != None:
-            st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
+            py_class = sub_info["msg_type"].split('/')[-1]
+            st.code(f'def {sub_info["callback"]}(self, msg: {py_class}):', language="python")
+    else:
+        enable_type_adapter = False
+        if st.session_state["gen"]["ros_distro"] >= "Humble":
+            enable_type_adapter = st.checkbox("Use Type Adapter", editing_sub.get("adapter_name", False))
+
+        if enable_type_adapter:
+            sub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_sub.get("cpp_type", ""))
+            sub_info["adapter_name"] = st.text_input("Adapter typename", editing_sub.get("adapter_name", ""))
+            st.code(f'void {sub_info["callback"]}(const {sub_info["cpp_type"]}& msg);', language="cpp")
+        else:
+            cb_types = st.session_state['gen'].get_callback_types(st.session_state["gen"]["ros_distro"])
+            callback_arg_type = st.radio("Callback argument type", cb_types.keys(), index=3 if editing_sub == {} or 'callback_arg_type' not in editing_sub.keys() else [i for i, k in enumerate(cb_types.keys()) if cb_types[k] == editing_sub["callback_arg_type"]][0], horizontal=True)
+            sub_info["callback_arg_type"] = cb_types[callback_arg_type]
+            if sub_info.get("msg_type", None) != None:
+                st.code(f'void {sub_info["callback"]}(const {interface2cpp(sub_info["msg_type"])}{sub_info["callback_arg_type"]} msg);', language="cpp")
     with st.expander('QoS settings'):
         sub_info["qos"] = add_qos(editing_sub.get("qos", {}))
     
@@ -162,12 +169,13 @@ def update_publisher(pub_var_name: str = None):
     if pub_var_name:
         editing_pub, index = st.session_state['gen'].pubs.get(pub_var_name)
     pub_info = get_pub_sub_info(editing_pub)
-    enable_type_adapter = False
-    if st.session_state["gen"]["ros_distro"] >= "Humble":
-        enable_type_adapter = st.checkbox("Use Type Adapter", editing_pub.get("adapter_name", False))
-    if enable_type_adapter:
-        pub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_pub.get("cpp_type", ""))
-        pub_info["adapter_name"] = st.text_input("Adapter typename", editing_pub.get("adapter_name", ""))
+    if st.session_state["gen"]["language"] != "python":
+        enable_type_adapter = False
+        if st.session_state["gen"]["ros_distro"] >= "Humble":
+            enable_type_adapter = st.checkbox("Use Type Adapter", editing_pub.get("adapter_name", False))
+        if enable_type_adapter:
+            pub_info["cpp_type"] = st.text_input("C++ type for conversion", editing_pub.get("cpp_type", ""))
+            pub_info["adapter_name"] = st.text_input("Adapter typename", editing_pub.get("adapter_name", ""))
     with st.expander('QoS settings'):
         pub_info["qos"] = add_qos(editing_pub.get("qos", {}))
     if st.button("Apply"):
@@ -266,8 +274,12 @@ def update_service(srv_var_name: str = None):
     srv_info["var_name"] = st.text_input("Variable name", value=editing_srv.get("var_name", ""))
     srv_info["callback"] = st.text_input("Service handler method name", value=editing_srv.get("callback", ""))
     if srv_info["type"] != None:
-        st.code(f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', language="cpp")
-    
+        if st.session_state["gen"]["language"] == "python":
+            py_class = srv_info["type"].split('/')[-1]
+            st.code(f'def {srv_info["callback"]}(self, request: {py_class}.Request, response: {py_class}.Response) -> {py_class}.Response:', language="python")
+        else:
+            st.code(f'void {srv_info["callback"]}(const std::shared_ptr<{interface2cpp(srv_info["type"])}::Request> request, std::shared_ptr<{interface2cpp(srv_info["type"])}::Response> response);', language="cpp")
+
     if st.button("Submit"):
         res, error_str = st.session_state['gen'].srvs.validate(srv_info, srv_var_name != None)
         if res:
@@ -472,7 +484,11 @@ with st.sidebar:
     st.link_button("View in Github", "https://github.com/tamerlan-b/ros2-package-generator.git", icon=':material/folder_code:')
     
     st.session_state['view'] = st.radio("Page view", ["Desktop", "Mobile"], horizontal=True)
-    
+
+    language = st.radio("Node language", ["C++", "Python"], horizontal=True)
+    st.session_state['gen']["language"] = "python" if language == "Python" else "cpp"
+    is_python = st.session_state['gen']["language"] == "python"
+
     # TODO: Remove button later
     if st.button("Fill package by default"):
         st.session_state["gen"]["node_filename"] = "node"
@@ -511,15 +527,22 @@ with st.sidebar:
             ]
         })
 
-    st.session_state["gen"]["ros_distro"]  = st.selectbox("ROS2 Distro", options=["Foxy", "Galactic", "Humble", "Iron", "Jazzy"], index=0)
+    if is_python:
+        st.caption("Python (rclpy) templates are distro-independent.")
+    else:
+        st.session_state["gen"]["ros_distro"] = st.selectbox("ROS2 Distro", options=["Foxy", "Galactic", "Humble", "Iron", "Jazzy"], index=0)
     st.session_state['gen']["package_name"] = st.text_input("Package name", "my_package")
     st.session_state['gen']["node_filename"] = st.text_input("Node filename", "my_node")
-    st.session_state['gen']["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")
-    st.session_state['gen']["node_classname"] = st.text_input("Node C++ classname", "MyNode")
+    if not is_python:
+        st.session_state['gen']["cmake_target_name"] = st.text_input("CMake target name", "my_node_component")
+    st.session_state['gen']["node_classname"] = st.text_input("Node C++ classname" if not is_python else "Node class name", "MyNode")
     st.session_state['gen']["node_name"] = st.text_input("Node name", "my_node")
-    st.session_state['gen']["node_ns"] = st.text_input("Node namespace", "my_ns")
-    node_type = st.radio("Node type", ["node", "component"], index=1, horizontal=True)
-    st.session_state['gen']["is_component"] = node_type == "component"
+    if is_python:
+        st.session_state['gen']["is_component"] = False
+    else:
+        st.session_state['gen']["node_ns"] = st.text_input("Node namespace", "my_ns")
+        node_type = st.radio("Node type", ["node", "component"], index=1, horizontal=True)
+        st.session_state['gen']["is_component"] = node_type == "component"
 
 def create_elems_code_cols(is_mobile: bool):
     if is_mobile:
@@ -575,21 +598,24 @@ with col_elems:
                 var_name = client["var_name"]
                 checkboxes['client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_client(var))
             
-            text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
-            for action_srv in st.session_state['gen']["action_servers"]:
-                var_name = action_srv["var_name"]
-                checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
-            
-            text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
-            for action_client in st.session_state['gen']["action_clients"]:
-                var_name = action_client["var_name"]
-                checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
-            
-            text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscriber", on_click=lambda: add_sync_sub())
-            for sync_sub in st.session_state['gen']["sync_subscribers"]:
-                cb_name = sync_sub["callback"]
-                checkboxes['sync_sub'][cb_name] = checkboxes_with_button(f'`{cb_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=cb_name, on_click=lambda var=cb_name: edit_sync_sub(var))
-            
+            if is_python:
+                st.caption("Action servers/clients and synchronized subscribers currently support C++ only.")
+            else:
+                text_with_button("🎬 Action servers:", "➕", help="Add action server", on_click=lambda: add_action_server())
+                for action_srv in st.session_state['gen']["action_servers"]:
+                    var_name = action_srv["var_name"]
+                    checkboxes['action_srv'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_srv["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_server(var))
+
+                text_with_button("🎯 Action clients:", "➕", help="Add action client", on_click=lambda: add_action_client())
+                for action_client in st.session_state['gen']["action_clients"]:
+                    var_name = action_client["var_name"]
+                    checkboxes['action_client'][var_name] = checkboxes_with_button(f'`{var_name}` (`{action_client["type"]}`)', "✏️", help="Edit", btn_key=var_name, on_click=lambda var=var_name: edit_action_client(var))
+
+                text_with_button("🔀 Synchronized subscribers (message filters):", "➕", help="Add sync subscriber", on_click=lambda: add_sync_sub())
+                for sync_sub in st.session_state['gen']["sync_subscribers"]:
+                    cb_name = sync_sub["callback"]
+                    checkboxes['sync_sub'][cb_name] = checkboxes_with_button(f'`{cb_name}` ({len(sync_sub["subs"])} topics)', "✏️", help="Edit", btn_key=cb_name, on_click=lambda var=cb_name: edit_sync_sub(var))
+
             # Remove selected items
             if st.button("Remove selected items 🗑️", type="primary"):
                 st.session_state['gen'].pubs.remove_many([k for k, v in checkboxes['pub'].items() if v])
@@ -633,22 +659,44 @@ with col_code:
         zip_buffer.seek(0)
         return zip_buffer
 
+    def create_python_package_archive_structure(pkg_name: str, node_filename: str,
+                                                files_content: Dict[str, str]) -> io.BytesIO:
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f"{pkg_name}/{pkg_name}/__init__.py", files_content.get('__init__.py', ''))
+            zf.writestr(f"{pkg_name}/{pkg_name}/{node_filename}.py", files_content.get(f'{node_filename}.py', ''))
+            zf.writestr(f"{pkg_name}/setup.py", files_content.get('setup.py', ''))
+            zf.writestr(f"{pkg_name}/setup.cfg", files_content.get('setup.cfg', ''))
+            zf.writestr(f"{pkg_name}/resource/{pkg_name}", files_content.get('resource', ''))
+            zf.writestr(f"{pkg_name}/package.xml", files_content.get('package.xml', ''))
+
+        zip_buffer.seek(0)
+        return zip_buffer
+
     # Generate package's files
     files = st.session_state['gen'].generate_files()
+    is_python = st.session_state['gen']["language"] == "python"
 
     def simple_download_button():
-        zip_files = {
-            'hpp': [v for f, v in files.items() if ".hpp" in f][0],
-            'cpp': [v for f, v in files.items() if ".cpp" in f][0],
-            'cmake': [v for f, v in files.items() if "CMakeLists.txt" == f][0],
-            'package_xml': [v for f, v in files.items() if "package.xml" == f][0],
-        }
-        
-        zip_buffer = create_package_archive_structure(
-            st.session_state["gen"]["package_name"], 
-            st.session_state["gen"]["node_filename"], 
-            zip_files)
-        
+        if is_python:
+            zip_buffer = create_python_package_archive_structure(
+                st.session_state["gen"]["package_name"],
+                st.session_state["gen"]["node_filename"],
+                files)
+        else:
+            zip_files = {
+                'hpp': [v for f, v in files.items() if ".hpp" in f][0],
+                'cpp': [v for f, v in files.items() if ".cpp" in f][0],
+                'cmake': [v for f, v in files.items() if "CMakeLists.txt" == f][0],
+                'package_xml': [v for f, v in files.items() if "package.xml" == f][0],
+            }
+
+            zip_buffer = create_package_archive_structure(
+                st.session_state["gen"]["package_name"],
+                st.session_state["gen"]["node_filename"],
+                zip_files)
+
         st.download_button(
             "📦 Download Package",
             data=zip_buffer,
@@ -656,18 +704,19 @@ with col_code:
             mime="application/zip"
         )
 
-    
+
     col_command, col_button = st.columns([0.8, 0.2], vertical_alignment='center')
-    
+
     with col_command:
         # Write terminal command for package generation
         with st.expander("ROS2 pkg create command:", expanded=True):
-            st.code(f'ros2  pkg create --build-type ament_cmake {st.session_state["gen"]["package_name"]}', language="bash")
+            build_type = "ament_python" if is_python else "ament_cmake"
+            st.code(f'ros2  pkg create --build-type {build_type} {st.session_state["gen"]["package_name"]}', language="bash")
 
     with col_button:
         # Add "Download Package" button
         simple_download_button()
-        
+
     tabs = st.tabs(list(files.keys()))
     index = 0
     for fname, fcontent in files.items():
@@ -678,6 +727,8 @@ with col_code:
                 st.code(fcontent, language="xml")
             elif fname == "CMakeLists.txt":
                 st.code(fcontent, language="cmake")
+            elif fname.endswith(".py") or fname == "setup.py":
+                st.code(fcontent, language="python")
             else:
                 st.code(fcontent)
         index += 1
